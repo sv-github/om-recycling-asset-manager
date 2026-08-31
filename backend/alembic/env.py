@@ -7,7 +7,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.database import Base
-
+from app.models.customer import Customer
 
 config = context.config
 
