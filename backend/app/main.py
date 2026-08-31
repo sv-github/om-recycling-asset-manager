@@ -6,6 +6,11 @@ from app.api.customers import router as customers_router
 from app.api.customer_locations import router as customer_locations_router
 from app.api.collections import router as collections_router
 from app.api.collection_items import router as collection_items_router
+from app.api.assets import router as assets_router
+from app.api.asset_inspections import router as asset_inspections_router
+from app.api.intake import router as intake_router
+from app.api.data_sanitization import router as data_sanitization_router
+from app.api.asset_processing import router as asset_processing_router
 
 
 app = FastAPI(
@@ -17,6 +22,11 @@ app.include_router(customers_router)
 app.include_router(customer_locations_router)
 app.include_router(collections_router)
 app.include_router(collection_items_router)
+app.include_router(assets_router)
+app.include_router(asset_inspections_router)
+app.include_router(intake_router)
+app.include_router(data_sanitization_router)
+app.include_router(asset_processing_router)
 
 @app.get("/health")
 def health_check():
