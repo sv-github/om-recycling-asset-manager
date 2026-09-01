@@ -4,3 +4,4 @@ from app.models.collection import Collection
 from app.models.collection_item import CollectionItem
 from app.models.asset import Asset
 from app.models.asset_inspection import AssetInspection
+from app.models.asset_disposition import AssetDisposition

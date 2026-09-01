@@ -11,6 +11,7 @@ from app.api.asset_inspections import router as asset_inspections_router
 from app.api.intake import router as intake_router
 from app.api.data_sanitization import router as data_sanitization_router
 from app.api.asset_processing import router as asset_processing_router
+from app.api.asset_dispositions import router as asset_dispositions_router
 
 
 app = FastAPI(
@@ -27,6 +28,7 @@ app.include_router(asset_inspections_router)
 app.include_router(intake_router)
 app.include_router(data_sanitization_router)
 app.include_router(asset_processing_router)
+app.include_router(asset_dispositions_router)
 
 @app.get("/health")
 def health_check():
