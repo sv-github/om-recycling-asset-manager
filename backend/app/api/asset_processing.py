@@ -328,6 +328,23 @@ def update_asset_processing(
         )
 
     # ---------------------------------------------------------
+    # Build the complete resulting state first.
+    # Do not modify the ORM object until all validation succeeds.
+    # ---------------------------------------------------------
+
+    processing_type = processing.processing_type.strip().lower()
+
+    grade = (
+        processing.grade.strip().upper()
+        if processing.grade is not None
+        else None
+    )
+
+    refurbishment_status = (
+        processing.refurbishment_status.strip().lower()
+    )
+
+    # ---------------------------------------------------------
     # Processing type
     # ---------------------------------------------------------
 
@@ -347,8 +364,6 @@ def update_asset_processing(
                 ),
             )
 
-        processing.processing_type = processing_type
-
     # ---------------------------------------------------------
     # Grade
     # ---------------------------------------------------------
@@ -365,8 +380,6 @@ def update_asset_processing(
                     "A, B, C, D, SCRAP."
                 ),
             )
-
-        processing.grade = grade
 
     # ---------------------------------------------------------
     # Refurbishment status
@@ -410,24 +423,50 @@ def update_asset_processing(
                     ),
                 )
 
-        if (
-            new_status == "completed"
-            and processing.grade is None
-            and data.grade is None
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "A completed refurbishment must have "
-                    "a grade."
-                ),
-            )
-
-        processing.refurbishment_status = new_status
+        refurbishment_status = new_status
 
     # ---------------------------------------------------------
-    # Remaining fields
+    # Validate the COMPLETE resulting combination.
+    # These rules mirror the existing CREATE business rules.
     # ---------------------------------------------------------
+
+    if (
+        processing_type == "grading"
+        and refurbishment_status
+        not in {"not_required", "completed"}
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "A grading-only record must use "
+                "'not_required' or 'completed' "
+                "for refurbishment_status."
+            ),
+        )
+
+    if (
+        processing_type in {
+            "refurbishment",
+            "grading_and_refurbishment",
+        }
+        and refurbishment_status == "completed"
+        and grade is None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "A completed refurbishment must have "
+                "a grade."
+            ),
+        )
+
+    # ---------------------------------------------------------
+    # Apply changes only after ALL validation succeeds.
+    # ---------------------------------------------------------
+
+    processing.processing_type = processing_type
+    processing.grade = grade
+    processing.refurbishment_status = refurbishment_status
 
     if data.processor is not None:
         processing.processor = data.processor
