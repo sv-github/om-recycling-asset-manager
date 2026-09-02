@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -8,6 +16,15 @@ from app.database import Base
 
 class Asset(Base):
     __tablename__ = "assets"
+
+    __table_args__ = (
+        Index(
+            "uq_assets_serial_number_not_null",
+            "serial_number",
+            unique=True,
+            postgresql_where=text("serial_number IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True,

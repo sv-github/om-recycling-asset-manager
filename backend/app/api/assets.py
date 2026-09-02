@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -68,7 +69,23 @@ def create_asset(
     )
 
     db.add(asset)
-    db.commit()
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+
+        if "uq_assets_serial_number_not_null" in str(exc.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "An asset with serial number "
+                    f"'{asset_data.serial_number}' already exists."
+                ),
+            ) from exc
+
+        raise
+
     db.refresh(asset)
 
     return asset
@@ -160,10 +177,47 @@ def update_asset(
         exclude_unset=True,
     )
 
+    # Check for an existing non-null serial number belonging
+    # to another asset.
+    if (
+        "serial_number" in update_data
+        and update_data["serial_number"] is not None
+    ):
+        existing_asset = db.scalar(
+            select(Asset).where(
+                Asset.serial_number == update_data["serial_number"],
+                Asset.id != asset_id,
+            )
+        )
+
+        if existing_asset is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "An asset with serial number "
+                    f"'{update_data['serial_number']}' already exists."
+                ),
+            )
+
     for field, value in update_data.items():
         setattr(asset, field, value)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+
+        if "uq_assets_serial_number_not_null" in str(exc.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "An asset with serial number "
+                    f"'{update_data.get('serial_number')}' already exists."
+                ),
+            ) from exc
+
+        raise
+
     db.refresh(asset)
 
     return asset
