@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.collection import Collection
+from app.models.collection_status import CollectionStatus
 from app.models.customer import Customer
 from app.models.customer_location import CustomerLocation
 from app.schemas.collection import (
@@ -60,9 +61,30 @@ def create_collection(
                 detail="Expected item count cannot be negative.",
             )
 
+    collection_status = db.scalar(
+        select(CollectionStatus).where(
+            CollectionStatus.code == collection_data.status,
+            CollectionStatus.is_active.is_(True),
+        )
+    )
+
+    if collection_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Collection status does not exist or is inactive.",
+        )
+
     collection = Collection(
         collection_code="TEMP",
-        **collection_data.model_dump(),
+        customer_id=collection_data.customer_id,
+        location_id=collection_data.location_id,
+        collection_date=collection_data.collection_date,
+        pickup_receipt_number=collection_data.pickup_receipt_number,
+        source_type=collection_data.source_type,
+        status_id=collection_status.id,
+        expected_item_count=collection_data.expected_item_count,
+        transport_reference=collection_data.transport_reference,
+        notes=collection_data.notes,
     )
 
     db.add(collection)
@@ -99,8 +121,11 @@ def list_collections(
         )
 
     if status_filter is not None:
-        query = query.where(
-            Collection.status == status_filter
+        query = query.join(
+            CollectionStatus,
+            Collection.status_id == CollectionStatus.id,
+        ).where(
+            CollectionStatus.code == status_filter
         )
 
     query = query.order_by(
@@ -167,6 +192,23 @@ def update_collection(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Pickup receipt number already exists.",
                 )
+
+    if "status" in update_data:
+        collection_status = db.scalar(
+            select(CollectionStatus).where(
+                CollectionStatus.code == update_data["status"],
+                CollectionStatus.is_active.is_(True),
+            )
+        )
+
+        if collection_status is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Collection status does not exist or is inactive.",
+            )
+
+        collection.status_id = collection_status.id
+        del update_data["status"]
 
     for field, value in update_data.items():
         setattr(collection, field, value)

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class CollectionCreate(BaseModel):
@@ -43,3 +43,11 @@ class CollectionResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def serialize_status(cls, value):
+        if hasattr(value, "code"):
+            return value.code
+
+        return value

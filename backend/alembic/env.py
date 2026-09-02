@@ -13,7 +13,9 @@ from app.models.collection import Collection
 from app.models.collection_item import CollectionItem
 from app.models.asset import Asset
 from app.models.asset_inspection import AssetInspection
+from app.models.asset_processing import AssetProcessing
 from app.models.asset_disposition import AssetDisposition
+from app.models.collection_status import CollectionStatus
 
 config = context.config
 
@@ -64,4 +66,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-from app.models.asset_processing import AssetProcessing

@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.customer import Customer
 from app.models.customer_location import CustomerLocation
 from app.models.collection import Collection
+from app.models.collection_status import CollectionStatus
 from app.models.collection_item import CollectionItem
 from app.models.asset import Asset
 from app.models.asset_inspection import AssetInspection
@@ -68,6 +69,21 @@ def seed_development_data(db: Session) -> None:
     db.flush()
 
     # ------------------------------------------------------------------
+    # Collection Status
+    # ------------------------------------------------------------------
+
+    completed_status = db.scalar(
+        select(CollectionStatus).where(
+            CollectionStatus.code == "completed"
+        )
+    )
+
+    if completed_status is None:
+        raise RuntimeError(
+            "Required collection status 'completed' does not exist."
+        )
+
+    # ------------------------------------------------------------------
     # Collection
     # ------------------------------------------------------------------
 
@@ -82,7 +98,7 @@ def seed_development_data(db: Session) -> None:
             collection_date=datetime.now(timezone.utc).date(),
             pickup_receipt_number="TEST-PICKUP-001",
             source_type="customer",
-            status="completed",
+            status_id=completed_status.id,
             expected_item_count=5,
             transport_reference="TEST-TRANSPORT-001",
             notes="Canonical development/test collection.",

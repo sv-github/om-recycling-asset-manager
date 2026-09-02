@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -49,12 +49,15 @@ class Collection(Base):
         nullable=False,
     )
 
-    status: Mapped[str] = mapped_column(
-        String(30),
+    status_id: Mapped[int] = mapped_column(
+        ForeignKey("collection_statuses.id", ondelete="RESTRICT"),
         nullable=False,
-        default="scheduled",
-        server_default="scheduled",
         index=True,
+    )
+
+    status: Mapped["CollectionStatus"] = relationship(
+        "CollectionStatus",
+        lazy="joined",
     )
 
     expected_item_count: Mapped[int | None] = mapped_column(

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text, func
+from sqlalchemy import Boolean, DateTime, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -8,6 +8,14 @@ from app.database import Base
 
 class Customer(Base):
     __tablename__ = "customers"
+
+    __table_args__ = (
+        Index(
+            "uq_customers_company_name_lower",
+            func.lower("company_name"),
+            unique=True,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
