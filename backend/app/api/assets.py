@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -17,20 +17,6 @@ router = APIRouter(
     prefix="/api/assets",
     tags=["Assets"],
 )
-
-
-def generate_asset_code(db: Session) -> str:
-    last_asset = db.scalars(
-        select(Asset)
-        .order_by(Asset.id.desc())
-    ).first()
-
-    if last_asset is None:
-        next_number = 1
-    else:
-        next_number = last_asset.id + 1
-
-    return f"AST-{next_number:08d}"
 
 
 @router.post(
@@ -71,8 +57,13 @@ def create_asset(
                 detail="Collection item does not belong to the specified collection.",
             )
 
+    next_id = db.scalar(
+        text("SELECT nextval('assets_id_seq')")
+    )
+
     asset = Asset(
-        asset_code=generate_asset_code(db),
+        id=next_id,
+        asset_code=f"AST-{next_id:08d}",
         **asset_data.model_dump(),
     )
 
