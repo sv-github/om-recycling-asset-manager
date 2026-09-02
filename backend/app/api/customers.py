@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -26,10 +27,12 @@ def create_customer(
     customer_data: CustomerCreate,
     db: Session = Depends(get_db),
 ):
+    company_name = customer_data.company_name
+
     existing_customer = db.scalar(
         select(Customer).where(
-            func.lower(Customer.company_name)
-            == customer_data.company_name.strip().lower()
+            func.lower(func.btrim(Customer.company_name))
+            == company_name.lower()
         )
     )
 
@@ -45,11 +48,25 @@ def create_customer(
     )
 
     db.add(customer)
-    db.flush()
 
-    customer.customer_code = f"CUS-{customer.id:06d}"
+    try:
+        db.flush()
 
-    db.commit()
+        customer.customer_code = f"CUS-{customer.id:06d}"
+
+        db.commit()
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        if "uq_customers_company_name_trimmed_lower" in str(exc.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A customer with this company name already exists.",
+            ) from exc
+
+        raise
+
     db.refresh(customer)
 
     return customer
@@ -111,11 +128,12 @@ def update_customer(
     )
 
     if "company_name" in update_data:
-        company_name = update_data["company_name"].strip()
+        company_name = update_data["company_name"]
 
         existing_customer = db.scalar(
             select(Customer).where(
-                func.lower(Customer.company_name) == company_name.lower(),
+                func.lower(func.btrim(Customer.company_name))
+                == company_name.lower(),
                 Customer.id != customer_id,
             )
         )
@@ -131,7 +149,20 @@ def update_customer(
     for field, value in update_data.items():
         setattr(customer, field, value)
 
-    db.commit()
+    try:
+        db.commit()
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        if "uq_customers_company_name_trimmed_lower" in str(exc.orig):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A customer with this company name already exists.",
+            ) from exc
+
+        raise
+
     db.refresh(customer)
 
     return customer

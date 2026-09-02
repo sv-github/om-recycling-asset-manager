@@ -1,10 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class CustomerCreate(BaseModel):
-    company_name: str
+    company_name: str = Field(min_length=1, max_length=200)
     legal_name: str | None = None
     gstin: str | None = None
     primary_contact_name: str | None = None
@@ -13,9 +13,23 @@ class CustomerCreate(BaseModel):
     address: str | None = None
     notes: str | None = None
 
+    @field_validator("company_name")
+    @classmethod
+    def normalize_company_name(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Company name cannot be blank.")
+
+        return value
+
 
 class CustomerUpdate(BaseModel):
-    company_name: str | None = None
+    company_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
     legal_name: str | None = None
     gstin: str | None = None
     primary_contact_name: str | None = None
@@ -24,6 +38,22 @@ class CustomerUpdate(BaseModel):
     address: str | None = None
     notes: str | None = None
     is_active: bool | None = None
+
+    @field_validator("company_name")
+    @classmethod
+    def normalize_company_name(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        value = value.strip()
+
+        if not value:
+            raise ValueError("Company name cannot be blank.")
+
+        return value
 
 
 class CustomerResponse(BaseModel):

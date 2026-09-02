@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -11,9 +11,13 @@ class Customer(Base):
 
     __table_args__ = (
         Index(
-            "uq_customers_company_name_lower",
-            func.lower("company_name"),
+            "uq_customers_company_name_trimmed_lower",
+            func.lower(func.btrim("company_name")),
             unique=True,
+        ),
+        CheckConstraint(
+            "btrim(company_name) <> ''",
+            name="ck_customers_company_name_not_blank",
         ),
     )
 
