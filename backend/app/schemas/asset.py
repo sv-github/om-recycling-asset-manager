@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class AssetCreate(BaseModel):
@@ -31,12 +31,6 @@ class AssetUpdate(BaseModel):
     received_by: str | None = None
     receiving_notes: str | None = None
 
-    data_wipe_status: str | None = None
-    data_wipe_method: str | None = None
-    data_wipe_date: datetime | None = None
-    data_wipe_reference: str | None = None
-
-    final_disposition: str | None = None
     notes: str | None = None
 
 
