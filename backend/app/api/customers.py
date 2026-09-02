@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -28,7 +28,8 @@ def create_customer(
 ):
     existing_customer = db.scalar(
         select(Customer).where(
-            Customer.company_name == customer_data.company_name
+            func.lower(Customer.company_name)
+            == customer_data.company_name.strip().lower()
         )
     )
 
@@ -108,6 +109,24 @@ def update_customer(
     update_data = customer_data.model_dump(
         exclude_unset=True
     )
+
+    if "company_name" in update_data:
+        company_name = update_data["company_name"].strip()
+
+        existing_customer = db.scalar(
+            select(Customer).where(
+                func.lower(Customer.company_name) == company_name.lower(),
+                Customer.id != customer_id,
+            )
+        )
+
+        if existing_customer:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A customer with this company name already exists.",
+            )
+
+        update_data["company_name"] = company_name
 
     for field, value in update_data.items():
         setattr(customer, field, value)
