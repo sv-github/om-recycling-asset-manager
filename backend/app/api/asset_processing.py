@@ -86,6 +86,15 @@ def create_asset_processing(
             detail="Asset not found.",
         )
 
+    if asset.status in {"closed", "disposed"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot create processing records for an asset "
+                f"with status '{asset.status}'."
+            ),
+        )
+
     # ---------------------------------------------------------
     # Validate processing type
     # ---------------------------------------------------------
@@ -283,6 +292,23 @@ def update_asset_processing(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset processing record not found.",
+        )
+
+    asset = db.get(Asset, processing.asset_id)
+
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Asset not found.",
+        )
+
+    if asset.status in {"closed", "disposed"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot modify processing records for an asset "
+                f"with status '{asset.status}'."
+            ),
         )
 
     # ---------------------------------------------------------
