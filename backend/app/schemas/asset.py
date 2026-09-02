@@ -28,8 +28,6 @@ class AssetUpdate(BaseModel):
     model: str | None = None
     description: str | None = None
 
-    status: str | None = None
-
     received_by: str | None = None
     receiving_notes: str | None = None
 
