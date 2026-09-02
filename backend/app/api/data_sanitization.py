@@ -50,6 +50,14 @@ def update_data_sanitization(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found.",
         )
+    if asset.status in {"closed", "disposed"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot modify data sanitization for an asset "
+                f"with status '{asset.status}'."
+            ),
+        )
 
     new_status = data.data_wipe_status.strip().lower()
 
