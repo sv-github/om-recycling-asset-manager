@@ -109,11 +109,12 @@ def create_asset_disposition(
             ),
         )
 
-    if asset.status == "closed":
+    # A disposed asset is permanently closed for new dispositions.
+    if asset.status in {"closed", "disposed"}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Asset {payload.asset_id} is already closed "
+                f"Asset {payload.asset_id} is already disposed "
                 "and cannot receive a new disposition"
             ),
         )
@@ -127,7 +128,9 @@ def create_asset_disposition(
         recipient_name=payload.recipient_name,
         recipient_reference=payload.recipient_reference,
         amount=payload.amount,
-        currency=payload.currency,
+        currency=payload.currency.upper()
+        if payload.currency is not None
+        else None,
         notes=payload.notes,
     )
 
@@ -266,6 +269,8 @@ def update_asset_disposition_status(
             ),
         )
 
+    asset = None
+
     if requested_status == DispositionStatus.completed:
         asset = get_asset_or_404(
             disposition.asset_id,
@@ -292,6 +297,15 @@ def update_asset_disposition_status(
                 ),
             )
 
+        if asset.status in {"closed", "disposed"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Asset {disposition.asset_id} is already disposed "
+                    "and cannot be completed again"
+                ),
+            )
+
         if (
             DispositionType(disposition.disposition_type)
             in REUSE_DISPOSITIONS
@@ -306,15 +320,16 @@ def update_asset_disposition_status(
                     ),
                 )
 
+    # Update the disposition first.
     disposition.disposition_status = requested_status.value
 
+    # Completing the disposition permanently closes the asset.
     if requested_status == DispositionStatus.completed:
-        asset = get_asset_or_404(
-            disposition.asset_id,
-            db,
-        )
-
         asset.status = "disposed"
+
+        # Store the completed disposition type as the asset's
+        # lifecycle summary field.
+        asset.final_disposition = disposition.disposition_type
 
     db.commit()
     db.refresh(disposition)
