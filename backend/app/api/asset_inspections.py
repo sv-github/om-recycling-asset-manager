@@ -35,6 +35,14 @@ def create_asset_inspection(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found.",
         )
+    if asset.status in {"closed", "disposed"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot create inspections for an asset "
+                f"with status '{asset.status}'."
+            ),
+        )
 
     data = inspection_data.model_dump()
 
@@ -126,6 +134,23 @@ def update_asset_inspection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset inspection not found.",
+        )
+
+    asset = db.get(Asset, inspection.asset_id)
+
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Asset not found.",
+        )
+
+    if asset.status in {"closed", "disposed"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot modify inspections for an asset "
+                f"with status '{asset.status}'."
+            ),
         )
 
     update_data = inspection_data.model_dump(
