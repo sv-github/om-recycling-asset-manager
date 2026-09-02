@@ -173,6 +173,22 @@ def create_asset_processing(
             "refurbishment",
             "grading_and_refurbishment",
         }
+        and refurbishment_status in {"completed", "failed"}
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "A new refurbishment processing record cannot "
+                f"start with status '{refurbishment_status}'. "
+                "Use 'pending' or 'in_progress'."
+            ),
+        )
+
+    if (
+        processing_type in {
+            "refurbishment",
+            "grading_and_refurbishment",
+        }
         and refurbishment_status == "completed"
         and grade is None
     ):
