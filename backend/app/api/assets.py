@@ -156,6 +156,14 @@ def update_asset(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found.",
         )
+    if asset.status in {"closed", "disposed"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot modify asset "
+                f"with status '{asset.status}'."
+            ),
+        )
 
     update_data = asset_data.model_dump(
         exclude_unset=True,
