@@ -37,6 +37,12 @@ def create_collection(
             detail="Customer not found.",
         )
 
+    if not customer.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Customer is inactive.",
+        )
+
     location = db.get(
         CustomerLocation,
         collection_data.location_id,
@@ -46,6 +52,12 @@ def create_collection(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Customer location not found.",
+        )
+
+    if not location.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Customer location is inactive.",
         )
 
     if location.customer_id != customer.id:
