@@ -176,6 +176,16 @@ def update_collection(
         exclude_unset=True
     )
 
+    if (
+        "expected_item_count" in update_data
+        and update_data["expected_item_count"] is not None
+        and update_data["expected_item_count"] < 0
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="expected_item_count cannot be negative.",
+        )
+
     if "pickup_receipt_number" in update_data:
         receipt_number = update_data["pickup_receipt_number"]
 

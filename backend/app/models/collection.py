@@ -1,6 +1,15 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -8,6 +17,13 @@ from app.database import Base
 
 class Collection(Base):
     __tablename__ = "collections"
+
+    __table_args__ = (
+        CheckConstraint(
+            "expected_item_count IS NULL OR expected_item_count >= 0",
+            name="ck_collections_expected_item_count_nonnegative",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
