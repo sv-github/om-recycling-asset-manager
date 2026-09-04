@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class InspectionType(str, Enum):
@@ -40,8 +40,8 @@ class AssetInspectionCreate(BaseModel):
 
     inspection_type: InspectionType = InspectionType.INITIAL
 
-    inspection_date: datetime | None = None
-    inspected_by: str | None = None
+    inspection_date: datetime = None
+    inspected_by: str | None = Field(default=None, max_length=150)
 
     working_status: WorkingStatus
     overall_condition: ConditionStatus
@@ -65,27 +65,27 @@ class AssetInspectionCreate(BaseModel):
 
 
 class AssetInspectionUpdate(BaseModel):
-    inspection_type: InspectionType | None = None
+    inspection_type: InspectionType = None
 
-    inspection_date: datetime | None = None
-    inspected_by: str | None = None
+    inspection_date: datetime = None
+    inspected_by: str | None = Field(default=None, max_length=150)
 
-    working_status: WorkingStatus | None = None
-    overall_condition: ConditionStatus | None = None
+    working_status: WorkingStatus = None
+    overall_condition: ConditionStatus = None
 
-    display_condition: ConditionStatus | None = None
-    body_condition: ConditionStatus | None = None
-    keyboard_condition: ConditionStatus | None = None
-    touchpad_condition: ConditionStatus | None = None
-    hinge_condition: ConditionStatus | None = None
-    ports_condition: ConditionStatus | None = None
-    battery_condition: ConditionStatus | None = None
-    charger_status: ComponentStatus | None = None
+    display_condition: ConditionStatus = None
+    body_condition: ConditionStatus = None
+    keyboard_condition: ConditionStatus = None
+    touchpad_condition: ConditionStatus = None
+    hinge_condition: ConditionStatus = None
+    ports_condition: ConditionStatus = None
+    battery_condition: ConditionStatus = None
+    charger_status: ComponentStatus = None
 
-    ram_status: ComponentStatus | None = None
-    storage_status: ComponentStatus | None = None
-    cpu_status: ComponentStatus | None = None
-    gpu_status: ComponentStatus | None = None
+    ram_status: ComponentStatus = None
+    storage_status: ComponentStatus = None
+    cpu_status: ComponentStatus = None
+    gpu_status: ComponentStatus = None
 
     accessories: str | None = None
     inspection_notes: str | None = None

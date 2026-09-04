@@ -1,34 +1,34 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AssetCreate(BaseModel):
     collection_id: int
     collection_item_id: int | None = None
 
-    serial_number: str | None = None
+    serial_number: str | None = Field(default=None, max_length=150)
 
-    asset_category: str
-    manufacturer: str | None = None
-    model: str | None = None
+    asset_category: str = Field(max_length=100)
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=150)
     description: str | None = None
 
-    received_by: str | None = None
+    received_by: str | None = Field(default=None, max_length=150)
     receiving_notes: str | None = None
 
     notes: str | None = None
 
 
 class AssetUpdate(BaseModel):
-    serial_number: str | None = None
+    serial_number: str | None = Field(default=None, max_length=150)
 
-    asset_category: str | None = None
-    manufacturer: str | None = None
-    model: str | None = None
+    asset_category: str = Field(default=None, max_length=100)
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=150)
     description: str | None = None
 
-    received_by: str | None = None
+    received_by: str | None = Field(default=None, max_length=150)
     receiving_notes: str | None = None
 
     notes: str | None = None

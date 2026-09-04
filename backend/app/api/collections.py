@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -86,6 +87,20 @@ def create_collection(
             detail="Collection status does not exist or is inactive.",
         )
 
+    if collection_data.pickup_receipt_number:
+        existing = db.scalar(
+            select(Collection).where(
+                Collection.pickup_receipt_number
+                == collection_data.pickup_receipt_number
+            )
+        )
+
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Pickup receipt number already exists.",
+            )
+
     collection = Collection(
         collection_code="TEMP",
         customer_id=collection_data.customer_id,
@@ -100,12 +115,31 @@ def create_collection(
     )
 
     db.add(collection)
-    db.flush()
 
-    collection.collection_code = f"COL-{collection.id:06d}"
+    try:
+        db.flush()
 
-    db.commit()
-    db.refresh(collection)
+        collection.collection_code = f"COL-{collection.id:06d}"
+
+        db.commit()
+        db.refresh(collection)
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        constraint_name = getattr(
+            getattr(exc.orig, "diag", None),
+            "constraint_name",
+            None,
+        )
+
+        if constraint_name == "collections_pickup_receipt_number_key":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Pickup receipt number already exists.",
+            ) from exc
+
+        raise
 
     return collection
 

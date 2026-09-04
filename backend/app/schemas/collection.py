@@ -1,29 +1,29 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CollectionCreate(BaseModel):
     customer_id: int
     location_id: int
     collection_date: date
-    pickup_receipt_number: str | None = None
-    source_type: str
+    pickup_receipt_number: str | None = Field(default=None, max_length=50)
+    source_type: str = Field(max_length=30)
     status: str = "scheduled"
-    expected_item_count: int | None = None
-    transport_reference: str | None = None
+    expected_item_count: int | None = Field(default=None, ge=0)
+    transport_reference: str | None = Field(default=None, max_length=100)
     notes: str | None = None
 
 
 class CollectionUpdate(BaseModel):
-    collection_date: date | None = None
-    pickup_receipt_number: str | None = None
-    source_type: str | None = None
-    status: str | None = None
-    expected_item_count: int | None = None
-    transport_reference: str | None = None
+    collection_date: date = None
+    pickup_receipt_number: str | None = Field(default=None, max_length=50)
+    source_type: str = Field(default=None, max_length=30)
+    status: str = None
+    expected_item_count: int | None = Field(default=None, ge=0)
+    transport_reference: str | None = Field(default=None, max_length=100)
     notes: str | None = None
-    is_active: bool | None = None
+    is_active: bool = None
 
 
 class CollectionResponse(BaseModel):

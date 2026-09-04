@@ -5,11 +5,11 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 class CustomerCreate(BaseModel):
     company_name: str = Field(min_length=1, max_length=200)
-    legal_name: str | None = None
-    gstin: str | None = None
-    primary_contact_name: str | None = None
+    legal_name: str | None = Field(default=None, max_length=250)
+    gstin: str | None = Field(default=None, max_length=15)
+    primary_contact_name: str | None = Field(default=None, max_length=150)
     primary_contact_email: EmailStr | None = None
-    primary_contact_phone: str | None = None
+    primary_contact_phone: str | None = Field(default=None, max_length=30)
     address: str | None = None
     notes: str | None = None
 
@@ -25,19 +25,19 @@ class CustomerCreate(BaseModel):
 
 
 class CustomerUpdate(BaseModel):
-    company_name: str | None = Field(
+    company_name: str = Field(
         default=None,
         min_length=1,
         max_length=200,
     )
-    legal_name: str | None = None
-    gstin: str | None = None
-    primary_contact_name: str | None = None
+    legal_name: str | None = Field(default=None, max_length=250)
+    gstin: str | None = Field(default=None, max_length=15)
+    primary_contact_name: str | None = Field(default=None, max_length=150)
     primary_contact_email: EmailStr | None = None
-    primary_contact_phone: str | None = None
+    primary_contact_phone: str | None = Field(default=None, max_length=30)
     address: str | None = None
     notes: str | None = None
-    is_active: bool | None = None
+    is_active: bool = None
 
     @field_validator("company_name")
     @classmethod

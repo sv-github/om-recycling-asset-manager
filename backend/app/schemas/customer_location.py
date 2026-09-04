@@ -1,26 +1,26 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class CustomerLocationCreate(BaseModel):
     customer_id: int
-    location_name: str
+    location_name: str = Field(max_length=150)
     address: str | None = None
-    contact_name: str | None = None
+    contact_name: str | None = Field(default=None, max_length=150)
     contact_email: EmailStr | None = None
-    contact_phone: str | None = None
+    contact_phone: str | None = Field(default=None, max_length=30)
     notes: str | None = None
 
 
 class CustomerLocationUpdate(BaseModel):
-    location_name: str | None = None
+    location_name: str = Field(default=None, max_length=150)
     address: str | None = None
-    contact_name: str | None = None
+    contact_name: str | None = Field(default=None, max_length=150)
     contact_email: EmailStr | None = None
-    contact_phone: str | None = None
+    contact_phone: str | None = Field(default=None, max_length=30)
     notes: str | None = None
-    is_active: bool | None = None
+    is_active: bool = None
 
 
 class CustomerLocationResponse(BaseModel):

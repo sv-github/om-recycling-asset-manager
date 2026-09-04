@@ -28,29 +28,18 @@ class AssetDispositionCreate(BaseModel):
 
     disposition_type: DispositionType
 
-    disposition_date: datetime | None = None
+    disposition_date: datetime = None
 
-    processed_by: str | None = Field(
+    processed_by: str | None = Field(default=None, max_length=150)
+    disposition_reference: str | None = Field(default=None, max_length=100)
+    recipient_name: str | None = Field(default=None, max_length=150)
+    recipient_reference: str | None = Field(default=None, max_length=100)
+
+    amount: Decimal | None = Field(
         default=None,
-        max_length=150,
+        max_digits=12,
+        decimal_places=2,
     )
-
-    disposition_reference: str | None = Field(
-        default=None,
-        max_length=100,
-    )
-
-    recipient_name: str | None = Field(
-        default=None,
-        max_length=150,
-    )
-
-    recipient_reference: str | None = Field(
-        default=None,
-        max_length=100,
-    )
-
-    amount: Decimal | None = None
 
     currency: str | None = Field(
         default=None,
@@ -62,31 +51,20 @@ class AssetDispositionCreate(BaseModel):
 
 
 class AssetDispositionUpdate(BaseModel):
-    disposition_type: DispositionType | None = None
+    disposition_type: DispositionType = None
 
-    disposition_date: datetime | None = None
+    disposition_date: datetime = None
 
-    processed_by: str | None = Field(
+    processed_by: str | None = Field(default=None, max_length=150)
+    disposition_reference: str | None = Field(default=None, max_length=100)
+    recipient_name: str | None = Field(default=None, max_length=150)
+    recipient_reference: str | None = Field(default=None, max_length=100)
+
+    amount: Decimal | None = Field(
         default=None,
-        max_length=150,
+        max_digits=12,
+        decimal_places=2,
     )
-
-    disposition_reference: str | None = Field(
-        default=None,
-        max_length=100,
-    )
-
-    recipient_name: str | None = Field(
-        default=None,
-        max_length=150,
-    )
-
-    recipient_reference: str | None = Field(
-        default=None,
-        max_length=100,
-    )
-
-    amount: Decimal | None = None
 
     currency: str | None = Field(
         default=None,

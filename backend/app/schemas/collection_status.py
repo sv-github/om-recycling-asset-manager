@@ -12,10 +12,10 @@ class CollectionStatusCreate(BaseModel):
 
 
 class CollectionStatusUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=100)
+    name: str = Field(default=None, min_length=1, max_length=100)
     description: str | None = None
-    sort_order: int | None = None
-    is_active: bool | None = None
+    sort_order: int = None
+    is_active: bool = None
 
 
 class CollectionStatusResponse(BaseModel):

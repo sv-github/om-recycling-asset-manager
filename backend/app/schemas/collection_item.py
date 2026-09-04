@@ -1,24 +1,24 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CollectionItemCreate(BaseModel):
     collection_id: int
-    category: str
-    manufacturer: str | None = None
-    model: str | None = None
+    category: str = Field(max_length=100)
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=150)
     description: str | None = None
-    expected_quantity: int
+    expected_quantity: int = Field(gt=0)
     notes: str | None = None
 
 
 class CollectionItemUpdate(BaseModel):
-    category: str | None = None
-    manufacturer: str | None = None
-    model: str | None = None
+    category: str = Field(default=None, max_length=100)
+    manufacturer: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=150)
     description: str | None = None
-    expected_quantity: int | None = None
+    expected_quantity: int = Field(default=None, gt=0)
     notes: str | None = None
 
 
