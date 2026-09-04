@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -8,6 +8,12 @@ from app.database import Base
 
 class CollectionItem(Base):
     __tablename__ = "collection_items"
+    __table_args__ = (
+        CheckConstraint(
+            "expected_quantity > 0",
+            name="ck_collection_items_expected_quantity_positive",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
