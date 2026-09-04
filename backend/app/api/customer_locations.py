@@ -41,16 +41,11 @@ def create_customer_location(
         location_code="TEMP",
         customer_id=data.customer_id,
         location_name=data.location_name,
-        address_line1=data.address_line1,
-        address_line2=data.address_line2,
-        city=data.city,
-        state=data.state,
-        postal_code=data.postal_code,
-        country=data.country,
+        address=data.address,
         contact_name=data.contact_name,
         contact_email=data.contact_email,
         contact_phone=data.contact_phone,
-        is_active=data.is_active,
+        notes=data.notes,
     )
 
     db.add(location)
