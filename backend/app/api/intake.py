@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,11 +14,66 @@ from app.schemas.intake import (
     AssetIntakeCreate,
 )
 
-
 router = APIRouter(
     prefix="/api/intake",
-    tags=["Collection Receiving / Asset Intake"],
+    tags=["Asset Intake"],
 )
+
+
+def _validate_collection_item(
+    db: Session,
+    collection_id: int,
+    collection_item_id: int,
+) -> CollectionItem:
+    item = db.get(CollectionItem, collection_item_id)
+
+    if item is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Collection item {collection_item_id} not found.",
+        )
+
+    if item.collection_id != collection_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Collection item {collection_item_id} does not belong "
+                f"to collection {collection_id}."
+            ),
+        )
+
+    return item
+
+
+def _check_duplicate_serial(
+    db: Session,
+    serial_number: str,
+    serial_keys: set[str],
+) -> None:
+    serial_key = serial_number.lower()
+
+    if serial_key in serial_keys:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Duplicate serial number in intake request: "
+                f"{serial_number}"
+            ),
+        )
+
+    serial_keys.add(serial_key)
+
+    existing_asset = db.scalars(
+        select(Asset).where(
+            func.lower(Asset.serial_number) == func.lower(serial_number)
+        )
+    ).first()
+
+    if existing_asset is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Serial number already exists: {serial_number}",
+        )
 
 
 @router.post(
@@ -27,13 +83,9 @@ router = APIRouter(
 )
 def receive_assets(
     collection_id: int,
-    intake_data: AssetIntakeCreate,
+    data: AssetIntakeCreate,
     db: Session = Depends(get_db),
 ):
-    """
-    Receive assets without performing an inspection.
-    """
-
     collection = db.get(Collection, collection_id)
 
     if collection is None:
@@ -42,76 +94,29 @@ def receive_assets(
             detail="Collection not found.",
         )
 
-    validated_items = []
-    serial_numbers = set()
-
-    for item in intake_data.assets:
-        collection_item = db.get(
-            CollectionItem,
-            item.collection_item_id,
-        )
-
-        if collection_item is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=(
-                    f"Collection item {item.collection_item_id} "
-                    "not found."
-                ),
-            )
-
-        if collection_item.collection_id != collection_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"Collection item {item.collection_item_id} "
-                    "does not belong to this collection."
-                ),
-            )
-
-        if item.serial_number:
-            if item.serial_number in serial_numbers:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=(
-                        f"Duplicate serial number in intake request: "
-                        f"{item.serial_number}"
-                    ),
-                )
-
-            serial_numbers.add(item.serial_number)
-
-            existing_asset = db.scalars(
-                select(Asset).where(
-                    Asset.serial_number == item.serial_number
-                )
-            ).first()
-
-            if existing_asset is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=(
-                        f"Serial number already exists: "
-                        f"{item.serial_number}"
-                    ),
-                )
-
-        validated_items.append(item)
-
-    created_assets = []
+    serial_keys: set[str] = set()
+    created_assets: list[Asset] = []
 
     try:
-        for item in validated_items:
-            next_id = db.execute(
-                text("SELECT nextval('assets_id_seq')")
-            ).scalar_one()
+        for item in data.assets:
+            collection_item = _validate_collection_item(
+                db,
+                collection_id,
+                item.collection_item_id,
+            )
+
+            if item.serial_number is not None:
+                _check_duplicate_serial(
+                    db,
+                    item.serial_number,
+                    serial_keys,
+                )
 
             asset = Asset(
-                id=next_id,
-                asset_code=f"AST-{next_id:08d}",
-                collection_id=collection_id,
-                collection_item_id=item.collection_item_id,
+                asset_code="TEMP",
                 serial_number=item.serial_number,
+                collection_id=collection_id,
+                collection_item_id=collection_item.id,
                 asset_category=item.asset_category,
                 manufacturer=item.manufacturer,
                 model=item.model,
@@ -122,12 +127,33 @@ def receive_assets(
             )
 
             db.add(asset)
+            db.flush()
+
+            asset.asset_code = f"AST-{asset.id:08d}"
+
             created_assets.append(asset)
 
         db.commit()
 
         for asset in created_assets:
             db.refresh(asset)
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        constraint_name = getattr(
+            getattr(exc.orig, "diag", None),
+            "constraint_name",
+            None,
+        )
+
+        if constraint_name == "uq_assets_serial_number_not_null":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Serial number already exists.",
+            ) from exc
+
+        raise
 
     except Exception:
         db.rollback()
@@ -143,18 +169,9 @@ def receive_assets(
 )
 def receive_assets_with_initial_inspection(
     collection_id: int,
-    intake_data: AssetInspectionIntakeCreate,
+    data: AssetInspectionIntakeCreate,
     db: Session = Depends(get_db),
 ):
-    """
-    Receive assets and create their initial inspections
-    as one atomic database transaction.
-    """
-
-    # ---------------------------------------------------------
-    # 1. Verify collection
-    # ---------------------------------------------------------
-
     collection = db.get(Collection, collection_id)
 
     if collection is None:
@@ -163,93 +180,29 @@ def receive_assets_with_initial_inspection(
             detail="Collection not found.",
         )
 
-    # ---------------------------------------------------------
-    # 2. Validate ALL items before creating anything
-    # ---------------------------------------------------------
-
-    validated_items = []
-    serial_numbers = set()
-
-    for item in intake_data.assets:
-
-        collection_item = db.get(
-            CollectionItem,
-            item.collection_item_id,
-        )
-
-        if collection_item is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=(
-                    f"Collection item {item.collection_item_id} "
-                    "not found."
-                ),
-            )
-
-        if collection_item.collection_id != collection_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    f"Collection item {item.collection_item_id} "
-                    "does not belong to this collection."
-                ),
-            )
-
-        # -----------------------------------------------------
-        # Duplicate serial number protection
-        # -----------------------------------------------------
-
-        if item.serial_number:
-
-            if item.serial_number in serial_numbers:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=(
-                        "Duplicate serial number in intake request: "
-                        f"{item.serial_number}"
-                    ),
-                )
-
-            serial_numbers.add(item.serial_number)
-
-            existing_asset = db.scalars(
-                select(Asset).where(
-                    Asset.serial_number == item.serial_number
-                )
-            ).first()
-
-            if existing_asset is not None:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=(
-                        "Serial number already exists: "
-                        f"{item.serial_number}"
-                    ),
-                )
-
-        validated_items.append(item)
-
-    # ---------------------------------------------------------
-    # 3. Create Assets + Initial Inspections
-    # ---------------------------------------------------------
-
-    created_assets = []
+    serial_keys: set[str] = set()
+    created_assets: list[Asset] = []
 
     try:
+        for item in data.assets:
+            collection_item = _validate_collection_item(
+                db,
+                collection_id,
+                item.collection_item_id,
+            )
 
-        for item in validated_items:
-
-            # Get next PostgreSQL asset ID atomically
-            next_id = db.execute(
-                text("SELECT nextval('assets_id_seq')")
-            ).scalar_one()
+            if item.serial_number is not None:
+                _check_duplicate_serial(
+                    db,
+                    item.serial_number,
+                    serial_keys,
+                )
 
             asset = Asset(
-                id=next_id,
-                asset_code=f"AST-{next_id:08d}",
-                collection_id=collection_id,
-                collection_item_id=item.collection_item_id,
+                asset_code="TEMP",
                 serial_number=item.serial_number,
+                collection_id=collection_id,
+                collection_item_id=collection_item.id,
                 asset_category=item.asset_category,
                 manufacturer=item.manufacturer,
                 model=item.model,
@@ -260,30 +213,58 @@ def receive_assets_with_initial_inspection(
             )
 
             db.add(asset)
+            db.flush()
 
-            # -------------------------------------------------
-            # Create initial inspection for this Asset
-            # -------------------------------------------------
+            asset.asset_code = f"AST-{asset.id:08d}"
 
-            inspection_data = item.inspection.model_dump()
+            inspection_data = item.inspection
 
             inspection = AssetInspection(
-                asset_id=next_id,
-                **inspection_data,
+                asset_id=asset.id,
+                inspection_type=inspection_data.inspection_type,
+                inspected_by=inspection_data.inspected_by,
+                working_status=inspection_data.working_status,
+                overall_condition=inspection_data.overall_condition,
+                display_condition=inspection_data.display_condition,
+                body_condition=inspection_data.body_condition,
+                keyboard_condition=inspection_data.keyboard_condition,
+                touchpad_condition=inspection_data.touchpad_condition,
+                hinge_condition=inspection_data.hinge_condition,
+                ports_condition=inspection_data.ports_condition,
+                battery_condition=inspection_data.battery_condition,
+                charger_status=inspection_data.charger_status,
+                ram_status=inspection_data.ram_status,
+                storage_status=inspection_data.storage_status,
+                cpu_status=inspection_data.cpu_status,
+                gpu_status=inspection_data.gpu_status,
+                accessories=inspection_data.accessories,
+                inspection_notes=inspection_data.inspection_notes,
             )
 
             db.add(inspection)
-
             created_assets.append(asset)
-
-        # -----------------------------------------------------
-        # 4. Commit BOTH Assets and Inspections together
-        # -----------------------------------------------------
 
         db.commit()
 
         for asset in created_assets:
             db.refresh(asset)
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        constraint_name = getattr(
+            getattr(exc.orig, "diag", None),
+            "constraint_name",
+            None,
+        )
+
+        if constraint_name == "uq_assets_serial_number_not_null":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Serial number already exists.",
+            ) from exc
+
+        raise
 
     except Exception:
         db.rollback()

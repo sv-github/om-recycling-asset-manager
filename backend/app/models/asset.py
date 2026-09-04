@@ -20,7 +20,7 @@ class Asset(Base):
     __table_args__ = (
         Index(
             "uq_assets_serial_number_not_null",
-            "serial_number",
+            func.lower(text("serial_number")),
             unique=True,
             postgresql_where=text("serial_number IS NOT NULL"),
         ),

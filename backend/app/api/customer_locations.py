@@ -11,11 +11,7 @@ from app.schemas.customer_location import (
     CustomerLocationUpdate,
 )
 
-
-router = APIRouter(
-    prefix="/api/customer-locations",
-    tags=["Customer Locations"],
-)
+router = APIRouter(prefix="/api/customer-locations", tags=["Customer Locations"])
 
 
 @router.post(
@@ -24,10 +20,10 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
 )
 def create_customer_location(
-    location_data: CustomerLocationCreate,
+    data: CustomerLocationCreate,
     db: Session = Depends(get_db),
 ):
-    customer = db.get(Customer, location_data.customer_id)
+    customer = db.get(Customer, data.customer_id)
 
     if customer is None:
         raise HTTPException(
@@ -35,9 +31,26 @@ def create_customer_location(
             detail="Customer not found.",
         )
 
+    if not customer.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Customer is inactive.",
+        )
+
     location = CustomerLocation(
         location_code="TEMP",
-        **location_data.model_dump(),
+        customer_id=data.customer_id,
+        location_name=data.location_name,
+        address_line1=data.address_line1,
+        address_line2=data.address_line2,
+        city=data.city,
+        state=data.state,
+        postal_code=data.postal_code,
+        country=data.country,
+        contact_name=data.contact_name,
+        contact_email=data.contact_email,
+        contact_phone=data.contact_phone,
+        is_active=data.is_active,
     )
 
     db.add(location)
@@ -49,26 +62,6 @@ def create_customer_location(
     db.refresh(location)
 
     return location
-
-
-@router.get(
-    "",
-    response_model=list[CustomerLocationResponse],
-)
-def list_customer_locations(
-    customer_id: int | None = None,
-    db: Session = Depends(get_db),
-):
-    query = select(CustomerLocation)
-
-    if customer_id is not None:
-        query = query.where(
-            CustomerLocation.customer_id == customer_id
-        )
-
-    query = query.order_by(CustomerLocation.location_name)
-
-    return db.scalars(query).all()
 
 
 @router.get(
@@ -90,13 +83,36 @@ def get_customer_location(
     return location
 
 
+@router.get(
+    "/customer/{customer_id}",
+    response_model=list[CustomerLocationResponse],
+)
+def list_customer_locations(
+    customer_id: int,
+    db: Session = Depends(get_db),
+):
+    customer = db.get(Customer, customer_id)
+
+    if customer is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer not found.",
+        )
+
+    return db.scalars(
+        select(CustomerLocation)
+        .where(CustomerLocation.customer_id == customer_id)
+        .order_by(CustomerLocation.id)
+    ).all()
+
+
 @router.put(
     "/{location_id}",
     response_model=CustomerLocationResponse,
 )
 def update_customer_location(
     location_id: int,
-    location_data: CustomerLocationUpdate,
+    data: CustomerLocationUpdate,
     db: Session = Depends(get_db),
 ):
     location = db.get(CustomerLocation, location_id)
@@ -107,9 +123,7 @@ def update_customer_location(
             detail="Customer location not found.",
         )
 
-    update_data = location_data.model_dump(
-        exclude_unset=True
-    )
+    update_data = data.model_dump(exclude_unset=True)
 
     for field, value in update_data.items():
         setattr(location, field, value)
