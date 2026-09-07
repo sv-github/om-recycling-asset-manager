@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.asset import Asset
+from app.models.asset_sanitization import AssetSanitization
 from app.schemas.data_sanitization import (
     DataSanitizationResponse,
     DataSanitizationUpdate,
@@ -50,6 +52,7 @@ def update_data_sanitization(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found.",
         )
+
     if asset.status in {"closed", "disposed"}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -130,7 +133,43 @@ def update_data_sanitization(
             )
 
     # ---------------------------------------------------------
-    # Update sanitization information
+    # Find or create the current sanitization cycle
+    # ---------------------------------------------------------
+
+    sanitization = db.scalar(
+        select(AssetSanitization)
+        .where(AssetSanitization.asset_id == asset.id)
+        .order_by(
+            AssetSanitization.id.desc()
+        )
+        .limit(1)
+    )
+
+    if sanitization is None:
+        sanitization = AssetSanitization(
+            asset_id=asset.id,
+            data_wipe_status=new_status,
+            data_wipe_method=data.data_wipe_method,
+            data_wipe_date=data.data_wipe_date,
+            data_wipe_reference=data.data_wipe_reference,
+        )
+
+        db.add(sanitization)
+
+    else:
+        sanitization.data_wipe_status = new_status
+
+        if data.data_wipe_method is not None:
+            sanitization.data_wipe_method = data.data_wipe_method
+
+        if data.data_wipe_date is not None:
+            sanitization.data_wipe_date = data.data_wipe_date
+
+        if data.data_wipe_reference is not None:
+            sanitization.data_wipe_reference = data.data_wipe_reference
+
+    # ---------------------------------------------------------
+    # Update the Asset's current sanitization state
     # ---------------------------------------------------------
 
     asset.data_wipe_status = new_status
@@ -148,6 +187,18 @@ def update_data_sanitization(
     # no date was supplied.
     if new_status == "passed" and asset.data_wipe_date is None:
         asset.data_wipe_date = datetime.now(timezone.utc)
+
+        sanitization.data_wipe_date = asset.data_wipe_date
+
+    # Keep the history record synchronized with the final
+    # current Asset values.
+    sanitization.data_wipe_method = asset.data_wipe_method
+    sanitization.data_wipe_date = asset.data_wipe_date
+    sanitization.data_wipe_reference = asset.data_wipe_reference
+
+    # ---------------------------------------------------------
+    # Commit Asset + sanitization history together
+    # ---------------------------------------------------------
 
     db.commit()
     db.refresh(asset)
