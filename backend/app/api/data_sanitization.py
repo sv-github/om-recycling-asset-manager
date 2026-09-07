@@ -45,7 +45,11 @@ def update_data_sanitization(
     data: DataSanitizationUpdate,
     db: Session = Depends(get_db),
 ):
-    asset = db.get(Asset, asset_id)
+    asset = db.scalar(
+        select(Asset)
+        .where(Asset.id == asset_id)
+        .with_for_update()
+    )
 
     if asset is None:
         raise HTTPException(
