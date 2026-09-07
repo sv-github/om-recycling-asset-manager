@@ -16,6 +16,7 @@ from app.models.asset_inspection import AssetInspection
 from app.models.asset_processing import AssetProcessing
 from app.models.asset_disposition import AssetDisposition
 from app.models.collection_status import CollectionStatus
+from app.models.asset_sanitization import AssetSanitization
 
 config = context.config
 
