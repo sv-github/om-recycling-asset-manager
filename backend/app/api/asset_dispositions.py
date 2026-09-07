@@ -139,6 +139,24 @@ def create_asset_disposition(
     payload: AssetDispositionCreate,
     db: Session = Depends(get_db),
 ):
+    # ---------------------------------------------------------
+    # Returned dispositions are lifecycle events created by the
+    # dedicated asset return endpoint.
+    #
+    # They must not be created through the generic disposition
+    # endpoint because completing one here would incorrectly
+    # dispose an active asset instead of reactivating it.
+    # ---------------------------------------------------------
+
+    if payload.disposition_type == DispositionType.returned:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Returned dispositions must be created through "
+                "the asset return endpoint."
+            ),
+        )
+
     asset = get_asset_or_404(
         payload.asset_id,
         db,
@@ -264,6 +282,27 @@ def update_asset_disposition(
         exclude_unset=True,
     )
 
+    # ---------------------------------------------------------
+    # A returned disposition must only be created by the
+    # dedicated asset return endpoint.
+    #
+    # This prevents an existing pending/approved disposition
+    # from being changed into a returned lifecycle event through
+    # the generic disposition API.
+    # ---------------------------------------------------------
+
+    if (
+        "disposition_type" in update_data
+        and update_data["disposition_type"] == DispositionType.returned
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Returned dispositions must be created through "
+                "the asset return endpoint."
+            ),
+        )
+
     if "disposition_type" in update_data:
         update_data["disposition_type"] = (
             update_data["disposition_type"].value
@@ -317,6 +356,26 @@ def update_asset_disposition_status(
                 f"Invalid disposition status transition: "
                 f"{current_status.value} -> "
                 f"{requested_status.value}"
+            ),
+        )
+
+    # ---------------------------------------------------------
+    # Returned dispositions represent an asset re-entry event
+    # and must be completed only by the dedicated return
+    # endpoint. The generic disposition workflow must never
+    # convert one into a normal disposed asset.
+    # ---------------------------------------------------------
+
+    if (
+        requested_status == DispositionStatus.completed
+        and DispositionType(disposition.disposition_type)
+        == DispositionType.returned
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Returned dispositions must be completed through "
+                "the asset return endpoint."
             ),
         )
 
