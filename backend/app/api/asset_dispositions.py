@@ -76,6 +76,60 @@ def get_disposition_or_404(
     return disposition
 
 
+def has_completed_disposition_in_current_lifecycle(
+    asset_id: int,
+    db: Session,
+    exclude_disposition_id: int | None = None,
+) -> bool:
+    """
+    Determine whether the asset already has a completed disposition
+    in its current active lifecycle.
+
+    A completed "returned" disposition establishes a new lifecycle.
+    Therefore, completed dispositions before the most recent return
+    belong to the previous lifecycle and do not block a new
+    disposition.
+
+    The return event itself is treated as the lifecycle boundary and
+    is not considered a terminal disposition for the new lifecycle.
+    """
+
+    completed_dispositions = db.scalars(
+        select(AssetDisposition)
+        .where(
+            AssetDisposition.asset_id == asset_id,
+            AssetDisposition.disposition_status
+            == DispositionStatus.completed.value,
+        )
+        .order_by(
+            AssetDisposition.id.desc()
+        )
+    ).all()
+
+    for disposition in completed_dispositions:
+        if (
+            exclude_disposition_id is not None
+            and disposition.id == exclude_disposition_id
+        ):
+            continue
+
+        if (
+            DispositionType(disposition.disposition_type)
+            == DispositionType.returned
+        ):
+            # The most recent completed return establishes the
+            # beginning of the current lifecycle. Any completed
+            # disposition encountered before this return belongs
+            # to the previous lifecycle.
+            return False
+
+        # The first completed non-return disposition encountered
+        # is a completed disposition in the current lifecycle.
+        return True
+
+    return False
+
+
 @router.post(
     "",
     response_model=AssetDispositionResponse,
@@ -90,32 +144,29 @@ def create_asset_disposition(
         db,
     )
 
-    existing_completed = db.scalar(
-        select(AssetDisposition)
-        .where(
-            AssetDisposition.asset_id == payload.asset_id,
-            AssetDisposition.disposition_status
-            == DispositionStatus.completed.value,
-        )
-        .limit(1)
-    )
-
-    if existing_completed is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Asset {payload.asset_id} already has a "
-                "completed disposition"
-            ),
-        )
-
-    # A disposed asset is permanently closed for new dispositions.
+    # A disposed or closed asset cannot receive a new disposition.
+    # A returned asset is reactivated to "received", so it can
+    # legitimately enter a new disposition lifecycle.
     if asset.status in {"closed", "disposed"}:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
                 f"Asset {payload.asset_id} is already disposed "
                 "and cannot receive a new disposition"
+            ),
+        )
+
+    # A previous lifecycle's completed disposition does not block
+    # a new disposition after the asset has been returned.
+    if has_completed_disposition_in_current_lifecycle(
+        payload.asset_id,
+        db,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Asset {payload.asset_id} already has a "
+                "completed disposition"
             ),
         )
 
@@ -277,18 +328,16 @@ def update_asset_disposition_status(
             db,
         )
 
-        existing_completed = db.scalar(
-            select(AssetDisposition)
-            .where(
-                AssetDisposition.asset_id == disposition.asset_id,
-                AssetDisposition.id != disposition.id,
-                AssetDisposition.disposition_status
-                == DispositionStatus.completed.value,
-            )
-            .limit(1)
-        )
-
-        if existing_completed is not None:
+        # A completed disposition is only blocked if another
+        # completed disposition exists in THIS lifecycle.
+        #
+        # A completed disposition from before the most recent
+        # returned event belongs to the previous lifecycle.
+        if has_completed_disposition_in_current_lifecycle(
+            disposition.asset_id,
+            db,
+            exclude_disposition_id=disposition.id,
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
