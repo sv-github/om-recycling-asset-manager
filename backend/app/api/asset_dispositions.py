@@ -382,10 +382,17 @@ def update_asset_disposition_status(
     asset = None
 
     if requested_status == DispositionStatus.completed:
-        asset = get_asset_or_404(
-            disposition.asset_id,
-            db,
+        asset = db.scalar(
+            select(Asset)
+            .where(Asset.id == disposition.asset_id)
+            .with_for_update()
         )
+
+        if asset is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Asset {disposition.asset_id} not found",
+            )
 
         # A completed disposition is only blocked if another
         # completed disposition exists in THIS lifecycle.
