@@ -47,6 +47,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  
+  frontend:
+    build:
+      context: ./frontend
+    container_name: om-asset-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
 
 
 volumes:

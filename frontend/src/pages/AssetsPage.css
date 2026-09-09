@@ -1,0 +1,169 @@
+.assets-filter-card {
+  margin-bottom: 20px;
+}
+
+.assets-filters {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) 180px auto;
+  align-items: end;
+  gap: 12px;
+  padding: 16px;
+}
+
+.assets-search,
+.assets-status-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assets-search label,
+.assets-status-filter label {
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.assets-search input,
+.assets-status-filter select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  outline: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.assets-search input::placeholder {
+  color: #9ca3af;
+}
+
+.assets-search input:focus,
+.assets-status-filter select:focus {
+  border-color: #6b7280;
+  box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.12);
+}
+
+.assets-filter-action {
+  display: flex;
+  align-items: center;
+}
+
+.assets-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin-bottom: 8px;
+}
+
+.assets-list-title {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.assets-list-count {
+  margin-left: 8px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.assets-table-card {
+  overflow: hidden;
+}
+
+.assets-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.assets-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 850px;
+}
+
+.assets-table th {
+  height: 42px;
+  padding: 0 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e2e6eb;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 650;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.assets-table td {
+  height: 54px;
+  padding: 0 16px;
+  border-bottom: 1px solid #edf0f3;
+  color: #374151;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.assets-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.assets-table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.asset-code-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.asset-code-button:hover {
+  text-decoration: underline;
+}
+
+.asset-code-button:focus-visible {
+  outline: 2px solid #9ca3af;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.assets-state {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.assets-state-error {
+  flex-direction: column;
+  color: #b91c1c;
+}
+
+@media (max-width: 760px) {
+  .assets-filters {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .assets-filter-action {
+    justify-content: flex-start;
+  }
+}
