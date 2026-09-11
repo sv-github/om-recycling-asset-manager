@@ -33,3 +33,14 @@ class DataSanitizationResponse(BaseModel):
     data_wipe_method: str | None
     data_wipe_date: datetime | None
     data_wipe_reference: str | None
+
+
+class DataSanitizationHistoryResponse(BaseModel):
+    id: int
+    asset_id: int
+    data_wipe_status: str
+    data_wipe_method: str | None
+    data_wipe_date: datetime | None
+    data_wipe_reference: str | None
+    created_at: datetime
+    updated_at: datetime

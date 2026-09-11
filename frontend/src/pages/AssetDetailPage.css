@@ -194,6 +194,22 @@
   font-weight: 650;
 }
 
+.asset-sanitization-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.asset-sanitization-history {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.asset-sanitization-card {
+  min-width: 0;
+}
+
 .asset-detail-placeholder {
   min-height: 180px;
   display: flex;

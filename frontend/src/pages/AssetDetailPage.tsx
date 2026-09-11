@@ -7,10 +7,12 @@ import {
 
 import { listAssetInspections } from '../api/assetInspections'
 import { listAssetProcessing } from '../api/assetProcessing'
+import { listAssetSanitization } from '../api/dataSanitization'
 import { getAsset } from '../api/assets'
 
 import type { AssetInspection } from '../types/assetInspection'
 import type { AssetProcessing } from '../types/assetProcessing'
+import type { AssetSanitization } from '../types/assetSanitization'
 import type { Asset } from '../types/asset'
 
 import Button from '../components/ui/Button'
@@ -130,6 +132,27 @@ function getProcessingStatusVariant(
   }
 }
 
+function getSanitizationStatusVariant(
+  status: string,
+): 'neutral' | 'success' | 'warning' | 'danger' | 'info' {
+  switch (status.toLowerCase()) {
+    case 'passed':
+      return 'success'
+
+    case 'in_progress':
+      return 'warning'
+
+    case 'failed':
+      return 'danger'
+
+    case 'not_started':
+      return 'neutral'
+
+    default:
+      return 'neutral'
+  }
+}
+
 function formatInspectionValue(
   value: string | null,
 ) {
@@ -239,12 +262,18 @@ function AssetDetailPage() {
   const [processingRecords, setProcessingRecords] =
     useState<AssetProcessing[]>([])
 
+  const [sanitizationRecords, setSanitizationRecords] =
+    useState<AssetSanitization[]>([])
+
   const [loading, setLoading] = useState(true)
 
   const [inspectionLoading, setInspectionLoading] =
     useState(false)
 
   const [processingLoading, setProcessingLoading] =
+    useState(false)
+
+  const [sanitizationLoading, setSanitizationLoading] =
     useState(false)
 
   const [error, setError] = useState<string | null>(
@@ -259,6 +288,11 @@ function AssetDetailPage() {
   const [
     processingError,
     setProcessingError,
+  ] = useState<string | null>(null)
+
+  const [
+    sanitizationError,
+    setSanitizationError,
   ] = useState<string | null>(null)
 
   const activeTab = assetId
@@ -386,6 +420,48 @@ function AssetDetailPage() {
     }
 
     void loadProcessing()
+  }, [activeTab, assetId])
+
+  useEffect(() => {
+    if (
+      activeTab !== 'sanitization' ||
+      !assetId
+    ) {
+      return
+    }
+
+    const numericAssetId = Number(assetId)
+
+    if (
+      !Number.isInteger(numericAssetId) ||
+      numericAssetId <= 0
+    ) {
+      return
+    }
+
+    async function loadSanitization() {
+      setSanitizationLoading(true)
+      setSanitizationError(null)
+
+      try {
+        const data =
+          await listAssetSanitization(
+            numericAssetId,
+          )
+
+        setSanitizationRecords(data)
+      } catch (err) {
+        setSanitizationError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to load sanitization history.',
+        )
+      } finally {
+        setSanitizationLoading(false)
+      }
+    }
+
+    void loadSanitization()
   }, [activeTab, assetId])
 
   function openTab(tab: DetailTab) {
@@ -1043,9 +1119,172 @@ function AssetDetailPage() {
         </div>
       )}
 
+      {activeTab === 'sanitization' && (
+        <div className="asset-sanitization-workspace">
+          <Card className="asset-sanitization-card">
+            <div className="asset-detail-card-title">
+              Current Status
+            </div>
+
+            <div className="asset-detail-fields">
+              <div className="asset-detail-field">
+                <div className="asset-detail-field-label">
+                  Data Wipe Status
+                </div>
+
+                <div className="asset-detail-inspection-value">
+                  <StatusBadge
+                    variant={getSanitizationStatusVariant(
+                      asset.data_wipe_status,
+                    )}
+                  >
+                    {formatInspectionValue(
+                      asset.data_wipe_status,
+                    )}
+                  </StatusBadge>
+                </div>
+              </div>
+
+              <DetailField
+                label="Method"
+                value={asset.data_wipe_method}
+              />
+
+              <DetailField
+                label="Date"
+                value={formatDate(
+                  asset.data_wipe_date,
+                )}
+              />
+
+              <DetailField
+                label="Reference"
+                value={asset.data_wipe_reference}
+              />
+            </div>
+          </Card>
+
+          {sanitizationLoading && (
+            <Card>
+              <div className="asset-detail-state">
+                Loading sanitization history...
+              </div>
+            </Card>
+          )}
+
+          {!sanitizationLoading &&
+            sanitizationError && (
+              <Card>
+                <div className="asset-detail-state asset-detail-state-error">
+                  <div>
+                    {sanitizationError}
+                  </div>
+
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      navigate(
+                        `/assets/${asset.id}/sanitization`,
+                      )
+                    }
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+          {!sanitizationLoading &&
+            !sanitizationError &&
+            sanitizationRecords.length === 0 && (
+              <Card>
+                <div className="asset-detail-state">
+                  No sanitization history recorded
+                  for this asset.
+                </div>
+              </Card>
+            )}
+
+          {!sanitizationLoading &&
+            !sanitizationError &&
+            sanitizationRecords.length > 0 && (
+              <div className="asset-sanitization-history">
+                {sanitizationRecords.map(
+                  (record, index) => (
+                    <Card
+                      key={record.id}
+                      className="asset-sanitization-card"
+                    >
+                      <div className="asset-detail-card-title">
+                        Sanitization Record {index + 1}
+                      </div>
+
+                      <div className="asset-detail-fields">
+                        <div className="asset-detail-field">
+                          <div className="asset-detail-field-label">
+                            Data Wipe Status
+                          </div>
+
+                          <div className="asset-detail-inspection-value">
+                            <StatusBadge
+                              variant={getSanitizationStatusVariant(
+                                record.data_wipe_status,
+                              )}
+                            >
+                              {formatInspectionValue(
+                                record.data_wipe_status,
+                              )}
+                            </StatusBadge>
+                          </div>
+                        </div>
+
+                        <DetailField
+                          label="Method"
+                          value={
+                            record.data_wipe_method
+                          }
+                        />
+
+                        <DetailField
+                          label="Date"
+                          value={formatDate(
+                            record.data_wipe_date,
+                          )}
+                        />
+
+                        <DetailField
+                          label="Reference"
+                          value={
+                            record.data_wipe_reference
+                          }
+                        />
+
+                        <DetailField
+                          label="Recorded At"
+                          value={formatDate(
+                            record.created_at,
+                          )}
+                        />
+
+                        <DetailField
+                          label="Updated At"
+                          value={formatDate(
+                            record.updated_at,
+                          )}
+                        />
+                      </div>
+                    </Card>
+                  ),
+                )}
+              </div>
+            )}
+        </div>
+      )}
+
       {activeTab !== 'overview' &&
         activeTab !== 'inspection' &&
-        activeTab !== 'processing' && (
+        activeTab !== 'processing' &&
+        activeTab !== 'sanitization' && (
           <Card>
             <div className="asset-detail-placeholder">
               <div className="asset-detail-placeholder-title">
@@ -1063,6 +1302,7 @@ function AssetDetailPage() {
             </div>
           </Card>
         )}
+
     </>
   )
 }
