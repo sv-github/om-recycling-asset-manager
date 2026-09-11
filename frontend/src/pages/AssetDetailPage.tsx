@@ -5,11 +5,13 @@ import {
   useParams,
 } from 'react-router-dom'
 
+import { listAssetDispositions } from '../api/assetDispositions'
 import { listAssetInspections } from '../api/assetInspections'
 import { listAssetProcessing } from '../api/assetProcessing'
 import { listAssetSanitization } from '../api/dataSanitization'
 import { getAsset } from '../api/assets'
 
+import type { AssetDisposition } from '../types/assetDisposition'
 import type { AssetInspection } from '../types/assetInspection'
 import type { AssetProcessing } from '../types/assetProcessing'
 import type { AssetSanitization } from '../types/assetSanitization'
@@ -153,6 +155,27 @@ function getSanitizationStatusVariant(
   }
 }
 
+function getDispositionStatusVariant(
+  status: string,
+): 'neutral' | 'success' | 'warning' | 'danger' | 'info' {
+  switch (status.toLowerCase()) {
+    case 'completed':
+      return 'success'
+
+    case 'approved':
+      return 'info'
+
+    case 'pending':
+      return 'warning'
+
+    case 'cancelled':
+      return 'danger'
+
+    default:
+      return 'neutral'
+  }
+}
+
 function formatInspectionValue(
   value: string | null,
 ) {
@@ -173,6 +196,21 @@ function formatDate(value: string | null) {
   }
 
   return new Date(value).toLocaleString()
+}
+
+function formatDispositionAmount(
+  amount: string | null,
+  currency: string | null,
+) {
+  if (!amount) {
+    return null
+  }
+
+  if (!currency) {
+    return amount
+  }
+
+  return `${currency} ${amount}`
 }
 
 function DetailField({
@@ -225,6 +263,32 @@ function InspectionField({
   )
 }
 
+function DispositionStatusField({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="asset-detail-field">
+      <div className="asset-detail-field-label">
+        {label}
+      </div>
+
+      <div className="asset-detail-inspection-value">
+        <StatusBadge
+          variant={getDispositionStatusVariant(
+            value,
+          )}
+        >
+          {formatInspectionValue(value)}
+        </StatusBadge>
+      </div>
+    </div>
+  )
+}
+
 function getActiveTab(
   pathname: string,
   assetId: string,
@@ -265,6 +329,9 @@ function AssetDetailPage() {
   const [sanitizationRecords, setSanitizationRecords] =
     useState<AssetSanitization[]>([])
 
+  const [dispositionRecords, setDispositionRecords] =
+    useState<AssetDisposition[]>([])
+
   const [loading, setLoading] = useState(true)
 
   const [inspectionLoading, setInspectionLoading] =
@@ -274,6 +341,9 @@ function AssetDetailPage() {
     useState(false)
 
   const [sanitizationLoading, setSanitizationLoading] =
+    useState(false)
+
+  const [dispositionLoading, setDispositionLoading] =
     useState(false)
 
   const [error, setError] = useState<string | null>(
@@ -293,6 +363,11 @@ function AssetDetailPage() {
   const [
     sanitizationError,
     setSanitizationError,
+  ] = useState<string | null>(null)
+
+  const [
+    dispositionError,
+    setDispositionError,
   ] = useState<string | null>(null)
 
   const activeTab = assetId
@@ -464,6 +539,48 @@ function AssetDetailPage() {
     void loadSanitization()
   }, [activeTab, assetId])
 
+  useEffect(() => {
+    if (
+      activeTab !== 'disposition' ||
+      !assetId
+    ) {
+      return
+    }
+
+    const numericAssetId = Number(assetId)
+
+    if (
+      !Number.isInteger(numericAssetId) ||
+      numericAssetId <= 0
+    ) {
+      return
+    }
+
+    async function loadDispositions() {
+      setDispositionLoading(true)
+      setDispositionError(null)
+
+      try {
+        const data =
+          await listAssetDispositions(
+            numericAssetId,
+          )
+
+        setDispositionRecords(data)
+      } catch (err) {
+        setDispositionError(
+          err instanceof Error
+            ? err.message
+            : 'Failed to load disposition history.',
+        )
+      } finally {
+        setDispositionLoading(false)
+      }
+    }
+
+    void loadDispositions()
+  }, [activeTab, assetId])
+
   function openTab(tab: DetailTab) {
     if (!assetId) {
       return
@@ -518,6 +635,16 @@ function AssetDetailPage() {
       </>
     )
   }
+
+  const activeDisposition =
+    dispositionRecords.find(
+      (record) =>
+        record.disposition_status === 'pending' ||
+        record.disposition_status === 'approved',
+    ) ?? null
+
+  const latestDisposition =
+    dispositionRecords[0] ?? null
 
   return (
     <>
@@ -1281,28 +1408,330 @@ function AssetDetailPage() {
         </div>
       )}
 
-      {activeTab !== 'overview' &&
-        activeTab !== 'inspection' &&
-        activeTab !== 'processing' &&
-        activeTab !== 'sanitization' && (
-          <Card>
-            <div className="asset-detail-placeholder">
-              <div className="asset-detail-placeholder-title">
-                {detailTabs.find(
-                  (tab) =>
-                    tab.id === activeTab,
-                )?.label}{' '}
-                Workspace
-              </div>
+      {activeTab === 'disposition' && (
+        <div className="asset-disposition-workspace">
+          <Card className="asset-disposition-card">
+            <div className="asset-detail-card-title">
+              Current Disposition
+            </div>
 
-              <div className="asset-detail-placeholder-text">
-                This section will be implemented
-                in the next development step.
-              </div>
+            <div className="asset-detail-fields">
+              <DetailField
+                label="Current Asset Status"
+                value={asset.status}
+              />
+
+              <DetailField
+                label="Final Disposition"
+                value={asset.final_disposition}
+              />
+
+              {activeDisposition ? (
+                <>
+                  <DetailField
+                    label="Disposition Type"
+                    value={formatInspectionValue(
+                      activeDisposition.disposition_type,
+                    )}
+                  />
+
+                  <DispositionStatusField
+                    label="Disposition Status"
+                    value={
+                      activeDisposition.disposition_status
+                    }
+                  />
+
+                  <DetailField
+                    label="Disposition Date"
+                    value={formatDate(
+                      activeDisposition.disposition_date,
+                    )}
+                  />
+
+                  <DetailField
+                    label="Processed By"
+                    value={
+                      activeDisposition.processed_by
+                    }
+                  />
+
+                  <DetailField
+                    label="Reference"
+                    value={
+                      activeDisposition.disposition_reference
+                    }
+                  />
+
+                  <DetailField
+                    label="Recipient"
+                    value={
+                      activeDisposition.recipient_name
+                    }
+                  />
+
+                  <DetailField
+                    label="Recipient Reference"
+                    value={
+                      activeDisposition.recipient_reference
+                    }
+                  />
+
+                  <DetailField
+                    label="Amount"
+                    value={formatDispositionAmount(
+                      activeDisposition.amount,
+                      activeDisposition.currency,
+                    )}
+                  />
+
+                  <DetailField
+                    label="Notes"
+                    value={
+                      activeDisposition.notes
+                    }
+                  />
+                </>
+              ) : (
+                <div className="asset-disposition-current-message">
+                  No active disposition is currently
+                  pending or approved for this asset.
+                </div>
+              )}
             </div>
           </Card>
-        )}
 
+          {!dispositionLoading &&
+            !dispositionError &&
+            !activeDisposition &&
+            latestDisposition && (
+              <Card className="asset-disposition-card">
+                <div className="asset-detail-card-title">
+                  Latest Disposition
+                </div>
+
+                <div className="asset-detail-fields">
+                  <DetailField
+                    label="Disposition Type"
+                    value={formatInspectionValue(
+                      latestDisposition.disposition_type,
+                    )}
+                  />
+
+                  <DispositionStatusField
+                    label="Disposition Status"
+                    value={
+                      latestDisposition.disposition_status
+                    }
+                  />
+
+                  <DetailField
+                    label="Disposition Date"
+                    value={formatDate(
+                      latestDisposition.disposition_date,
+                    )}
+                  />
+
+                  <DetailField
+                    label="Processed By"
+                    value={
+                      latestDisposition.processed_by
+                    }
+                  />
+
+                  <DetailField
+                    label="Reference"
+                    value={
+                      latestDisposition.disposition_reference
+                    }
+                  />
+
+                  <DetailField
+                    label="Recipient"
+                    value={
+                      latestDisposition.recipient_name
+                    }
+                  />
+
+                  <DetailField
+                    label="Recipient Reference"
+                    value={
+                      latestDisposition.recipient_reference
+                    }
+                  />
+
+                  <DetailField
+                    label="Amount"
+                    value={formatDispositionAmount(
+                      latestDisposition.amount,
+                      latestDisposition.currency,
+                    )}
+                  />
+
+                  <DetailField
+                    label="Notes"
+                    value={
+                      latestDisposition.notes
+                    }
+                  />
+                </div>
+              </Card>
+            )}
+
+          {dispositionLoading && (
+            <Card>
+              <div className="asset-detail-state">
+                Loading disposition history...
+              </div>
+            </Card>
+          )}
+
+          {!dispositionLoading &&
+            dispositionError && (
+              <Card>
+                <div className="asset-detail-state asset-detail-state-error">
+                  <div>
+                    {dispositionError}
+                  </div>
+
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      navigate(
+                        `/assets/${asset.id}/disposition`,
+                      )
+                    }
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+          {!dispositionLoading &&
+            !dispositionError &&
+            dispositionRecords.length === 0 && (
+              <Card>
+                <div className="asset-detail-state">
+                  No disposition records recorded
+                  for this asset.
+                </div>
+              </Card>
+            )}
+
+          {!dispositionLoading &&
+            !dispositionError &&
+            dispositionRecords.length > 0 && (
+              <div className="asset-disposition-history">
+                {dispositionRecords.map(
+                  (record, index) => (
+                    <Card
+                      key={record.id}
+                      className="asset-disposition-card"
+                    >
+                      <div className="asset-detail-card-title">
+                        Disposition Record {index + 1}
+                      </div>
+
+                      <div className="asset-detail-fields">
+                        <DetailField
+                          label="Disposition Type"
+                          value={formatInspectionValue(
+                            record.disposition_type,
+                          )}
+                        />
+
+                        <DispositionStatusField
+                          label="Disposition Status"
+                          value={
+                            record.disposition_status
+                          }
+                        />
+
+                        <DetailField
+                          label="Disposition Date"
+                          value={formatDate(
+                            record.disposition_date,
+                          )}
+                        />
+
+                        <DetailField
+                          label="Processed By"
+                          value={
+                            record.processed_by
+                          }
+                        />
+
+                        <DetailField
+                          label="Reference"
+                          value={
+                            record.disposition_reference
+                          }
+                        />
+
+                        <DetailField
+                          label="Recipient"
+                          value={
+                            record.recipient_name
+                          }
+                        />
+
+                        <DetailField
+                          label="Recipient Reference"
+                          value={
+                            record.recipient_reference
+                          }
+                        />
+
+                        <DetailField
+                          label="Amount"
+                          value={formatDispositionAmount(
+                            record.amount,
+                            record.currency,
+                          )}
+                        />
+
+                        <DetailField
+                          label="Notes"
+                          value={record.notes}
+                        />
+
+                        <DetailField
+                          label="Recorded At"
+                          value={formatDate(
+                            record.created_at,
+                          )}
+                        />
+
+                        <DetailField
+                          label="Updated At"
+                          value={formatDate(
+                            record.updated_at,
+                          )}
+                        />
+                      </div>
+                    </Card>
+                  ),
+                )}
+              </div>
+            )}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <Card>
+          <div className="asset-detail-placeholder">
+            <div className="asset-detail-placeholder-title">
+              History Workspace
+            </div>
+
+            <div className="asset-detail-placeholder-text">
+              The consolidated asset history will be
+              implemented in a future development step.
+            </div>
+          </div>
+        </Card>
+      )}
     </>
   )
 }

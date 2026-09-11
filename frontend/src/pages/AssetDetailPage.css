@@ -1,9 +1,8 @@
 .asset-detail-header {
   display: flex;
-  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .asset-detail-header-main {
@@ -11,7 +10,8 @@
 }
 
 .asset-detail-header-action {
-  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
   padding-top: 4px;
 }
 
@@ -19,7 +19,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: -8px;
+  margin-top: 8px;
 }
 
 .asset-detail-status-label {
@@ -30,53 +30,37 @@
 
 .asset-detail-tabs {
   margin-bottom: 20px;
-  border-bottom: 1px solid #dfe3e8;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
 }
 
 .asset-detail-tab-list {
   display: flex;
-  align-items: stretch;
-  gap: 2px;
-  overflow-x: auto;
+  min-width: max-content;
+  gap: 4px;
 }
 
 .asset-detail-tab {
-  position: relative;
-  min-height: 42px;
+  height: 40px;
   padding: 0 14px;
   border: 0;
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: #6b7280;
+  cursor: pointer;
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .asset-detail-tab:hover {
-  color: #111827;
-  background: #f9fafb;
-}
-
-.asset-detail-tab:focus-visible {
-  outline: 2px solid #9ca3af;
-  outline-offset: -2px;
-  border-radius: 4px 4px 0 0;
+  color: #374151;
 }
 
 .asset-detail-tab-active {
+  border-bottom-color: #111827;
   color: #111827;
-}
-
-.asset-detail-tab-active::after {
-  content: '';
-  position: absolute;
-  right: 10px;
-  bottom: -1px;
-  left: 10px;
-  height: 2px;
-  background: #1f2937;
-  border-radius: 2px 2px 0 0;
 }
 
 .asset-detail-grid {
@@ -208,6 +192,30 @@
 
 .asset-sanitization-card {
   min-width: 0;
+}
+
+.asset-disposition-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.asset-disposition-card {
+  min-width: 0;
+}
+
+.asset-disposition-history {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.asset-disposition-current-message {
+  grid-column: 1 / -1;
+  padding-top: 4px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .asset-detail-placeholder {

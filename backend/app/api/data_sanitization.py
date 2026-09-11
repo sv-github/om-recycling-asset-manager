@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models.asset import Asset
 from app.models.asset_sanitization import AssetSanitization
 from app.schemas.data_sanitization import (
+    DataSanitizationHistoryResponse,
     DataSanitizationResponse,
     DataSanitizationUpdate,
 )
@@ -221,3 +222,35 @@ def update_data_sanitization(
         data_wipe_date=asset.data_wipe_date,
         data_wipe_reference=asset.data_wipe_reference,
     )
+
+@router.get(
+    "/{asset_id}/data-sanitization",
+    response_model=list[DataSanitizationHistoryResponse],
+)
+def get_data_sanitization_history(
+    asset_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Return the complete sanitization history for an asset.
+    """
+
+    asset = db.get(Asset, asset_id)
+
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Asset not found.",
+        )
+
+    sanitization_records = db.scalars(
+        select(AssetSanitization)
+        .where(
+            AssetSanitization.asset_id == asset_id
+        )
+        .order_by(
+            AssetSanitization.id.desc()
+        )
+    ).all()
+
+    return sanitization_records
