@@ -10,12 +10,14 @@ import { listAssetInspections } from '../api/assetInspections'
 import { listAssetProcessing } from '../api/assetProcessing'
 import { listAssetSanitization } from '../api/dataSanitization'
 import { getAsset } from '../api/assets'
+import { getAssetHistory } from '../api/assetHistory'
 
 import type { AssetDisposition } from '../types/assetDisposition'
 import type { AssetInspection } from '../types/assetInspection'
 import type { AssetProcessing } from '../types/assetProcessing'
 import type { AssetSanitization } from '../types/assetSanitization'
 import type { Asset } from '../types/asset'
+import type { AssetHistoryEvent } from '../types/assetHistory'
 
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
@@ -213,6 +215,58 @@ function formatDispositionAmount(
   return `${currency} ${amount}`
 }
 
+function getHistoryEventLabel(
+  event: AssetHistoryEvent,
+): string {
+  switch (event.event_type) {
+    case 'inspection':
+      return 'Inspection'
+
+    case 'processing':
+      return 'Processing'
+
+    case 'sanitization':
+      return 'Data Sanitization'
+
+    case 'disposition':
+      return 'Disposition'
+
+    case 'return':
+      return 'Asset Returned'
+
+    default:
+      return event.title
+  }
+}
+
+function formatHistoryDate(value: string) {
+  return new Date(value).toLocaleString()
+}
+
+function formatHistoryDetailValue(
+  value: unknown,
+): string {
+  if (value === null || value === undefined) {
+    return '—'
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No'
+  }
+
+  return String(value)
+}
+
+function formatHistoryDetailLabel(
+  value: string,
+): string {
+  return value
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    )
+}
+
 function DetailField({
   label,
   value,
@@ -332,6 +386,10 @@ function AssetDetailPage() {
   const [dispositionRecords, setDispositionRecords] =
     useState<AssetDisposition[]>([])
 
+  const [historyEvents, setHistoryEvents] = useState<
+    AssetHistoryEvent[]
+  >([])
+
   const [loading, setLoading] = useState(true)
 
   const [inspectionLoading, setInspectionLoading] =
@@ -344,6 +402,9 @@ function AssetDetailPage() {
     useState(false)
 
   const [dispositionLoading, setDispositionLoading] =
+    useState(false)
+
+  const [historyLoading, setHistoryLoading] =
     useState(false)
 
   const [error, setError] = useState<string | null>(
@@ -369,6 +430,9 @@ function AssetDetailPage() {
     dispositionError,
     setDispositionError,
   ] = useState<string | null>(null)
+
+  const [historyError, setHistoryError] =
+    useState<string | null>(null)
 
   const activeTab = assetId
     ? getActiveTab(location.pathname, assetId)
@@ -579,6 +643,60 @@ function AssetDetailPage() {
     }
 
     void loadDispositions()
+  }, [activeTab, assetId])
+
+  useEffect(() => {
+    if (
+      activeTab !== 'history' ||
+      !assetId
+    ) {
+      return
+    }
+
+    const numericAssetId = Number(assetId)
+
+    if (
+      !Number.isInteger(numericAssetId) ||
+      numericAssetId <= 0
+    ) {
+      return
+    }
+
+    let cancelled = false
+
+    async function loadHistory() {
+      setHistoryLoading(true)
+      setHistoryError(null)
+
+      try {
+        const data =
+          await getAssetHistory(
+            numericAssetId,
+          )
+
+        if (!cancelled) {
+          setHistoryEvents(data.events)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setHistoryError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to load asset history.',
+          )
+        }
+      } finally {
+        if (!cancelled) {
+          setHistoryLoading(false)
+        }
+      }
+    }
+
+    void loadHistory()
+
+    return () => {
+      cancelled = true
+    }
   }, [activeTab, assetId])
 
   function openTab(tab: DetailTab) {
@@ -1570,9 +1688,7 @@ function AssetDetailPage() {
 
                   <DetailField
                     label="Notes"
-                    value={
-                      latestDisposition.notes
-                    }
+                    value={latestDisposition.notes}
                   />
                 </div>
               </Card>
@@ -1719,18 +1835,139 @@ function AssetDetailPage() {
       )}
 
       {activeTab === 'history' && (
-        <Card>
-          <div className="asset-detail-placeholder">
-            <div className="asset-detail-placeholder-title">
-              History Workspace
-            </div>
+        <div className="asset-history-workspace">
+          <Card>
+            <div className="asset-history-header">
+              <div>
+                <h2>Asset History</h2>
 
-            <div className="asset-detail-placeholder-text">
-              The consolidated asset history will be
-              implemented in a future development step.
+                <p className="asset-history-subtitle">
+                  Complete lifecycle history for this asset.
+                </p>
+              </div>
+
+              {!historyLoading && !historyError && (
+                <StatusBadge variant="neutral">
+                  {historyEvents.length}{' '}
+                  {historyEvents.length === 1
+                    ? 'Event'
+                    : 'Events'}
+                </StatusBadge>
+              )}
             </div>
-          </div>
-        </Card>
+          </Card>
+
+          {historyLoading && (
+            <Card>
+              <div className="asset-detail-state">
+                Loading asset history...
+              </div>
+            </Card>
+          )}
+
+          {!historyLoading && historyError && (
+            <Card>
+              <div className="asset-detail-state asset-detail-state-error">
+                <div>{historyError}</div>
+
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    navigate(
+                      `/assets/${asset.id}/history`,
+                    )
+                  }
+                >
+                  Retry
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {!historyLoading &&
+            !historyError &&
+            historyEvents.length === 0 && (
+              <Card>
+                <div className="asset-detail-state">
+                  No history recorded for this asset.
+                </div>
+              </Card>
+            )}
+
+          {!historyLoading &&
+            !historyError &&
+            historyEvents.length > 0 && (
+              <div className="asset-history-timeline">
+                {historyEvents.map((event, index) => (
+                  <div
+                    key={`${event.event_type}-${event.event_id}`}
+                    className="asset-history-event"
+                  >
+                    <div className="asset-history-marker">
+                      <div className="asset-history-dot" />
+
+                      {index <
+                        historyEvents.length - 1 && (
+                        <div className="asset-history-line" />
+                      )}
+                    </div>
+
+                    <Card>
+                      <div className="asset-history-event-header">
+                        <div>
+                          <h3>
+                            {getHistoryEventLabel(event)}
+                          </h3>
+
+                          <div className="asset-history-date">
+                            {formatHistoryDate(
+                              event.event_date,
+                            )}
+                          </div>
+                        </div>
+
+                        {event.status && (
+                          <StatusBadge variant="neutral">
+                            {formatInspectionValue(
+                              event.status,
+                            )}
+                          </StatusBadge>
+                        )}
+                      </div>
+
+                      {Object.keys(event.details).length >
+                        0 && (
+                        <div className="asset-history-details">
+                          {Object.entries(
+                            event.details,
+                          ).map(
+                            ([key, value]) => (
+                              <div
+                                key={key}
+                                className="asset-history-detail"
+                              >
+                                <span className="asset-history-detail-label">
+                                  {formatHistoryDetailLabel(
+                                    key,
+                                  )}
+                                </span>
+
+                                <span className="asset-history-detail-value">
+                                  {formatHistoryDetailValue(
+                                    value,
+                                  )}
+                                </span>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      )}
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            )}
+        </div>
       )}
     </>
   )
