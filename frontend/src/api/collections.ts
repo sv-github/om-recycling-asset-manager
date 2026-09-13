@@ -15,6 +15,71 @@ export type CollectionListFilters = {
   status?: string
 }
 
+export type CollectionCreateInput = {
+  customer_id: number
+  location_id: number
+  collection_date: string
+  pickup_receipt_number?: string | null
+  source_type: string
+  status?: string
+  expected_item_count?: number | null
+  transport_reference?: string | null
+  notes?: string | null
+}
+
+export type CustomerCreateInput = {
+  company_name: string
+  legal_name?: string | null
+  gstin?: string | null
+  primary_contact_name?: string | null
+  primary_contact_email?: string | null
+  primary_contact_phone?: string | null
+  address?: string | null
+  notes?: string | null
+}
+
+export type CustomerLocationCreateInput = {
+  customer_id: number
+  location_name: string
+  address?: string | null
+  contact_name?: string | null
+  contact_email?: string | null
+  contact_phone?: string | null
+  notes?: string | null
+}
+
+async function getErrorMessage(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  try {
+    const data = await response.json()
+
+    if (typeof data.detail === 'string') {
+      return data.detail
+    }
+
+    if (Array.isArray(data.detail)) {
+      const message = data.detail
+        .map(
+          (item: {
+            msg?: string
+          }) => item.msg,
+        )
+        .filter(Boolean)
+        .join('; ')
+
+      if (message) {
+        return message
+      }
+    }
+  } catch {
+    // Keep fallback message.
+  }
+
+  return fallback
+}
+
 export async function listCollections(
   filters: CollectionListFilters = {},
 ): Promise<Collection[]> {
@@ -51,7 +116,10 @@ export async function listCollections(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load collections (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load collections (${response.status})`,
+      ),
     )
   }
 
@@ -67,11 +135,92 @@ export async function getCollection(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load collection (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load collection (${response.status})`,
+      ),
     )
   }
 
   return response.json() as Promise<Collection>
+}
+
+export async function createCollection(
+  input: CollectionCreateInput,
+): Promise<Collection> {
+  const response = await fetch(
+    `${API_BASE}/collections`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Failed to create collection (${response.status})`,
+      ),
+    )
+  }
+
+  return response.json() as Promise<Collection>
+}
+
+export async function createCustomer(
+  input: CustomerCreateInput,
+): Promise<Customer> {
+  const response = await fetch(
+    `${API_BASE}/customers`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Failed to create customer (${response.status})`,
+      ),
+    )
+  }
+
+  return response.json() as Promise<Customer>
+}
+
+export async function createCustomerLocation(
+  input: CustomerLocationCreateInput,
+): Promise<CustomerLocation> {
+  const response = await fetch(
+    `${API_BASE}/customer-locations`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(
+        response,
+        `Failed to create customer location (${response.status})`,
+      ),
+    )
+  }
+
+  return response.json() as Promise<CustomerLocation>
 }
 
 export async function listCustomers(): Promise<Customer[]> {
@@ -81,7 +230,10 @@ export async function listCustomers(): Promise<Customer[]> {
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load customers (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load customers (${response.status})`,
+      ),
     )
   }
 
@@ -97,7 +249,10 @@ export async function getCustomer(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load customer (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load customer (${response.status})`,
+      ),
     )
   }
 
@@ -119,7 +274,10 @@ export async function listCustomerLocations(
 
       if (!response.ok) {
         throw new Error(
-          `Failed to load customer locations (${response.status})`,
+          await getErrorMessage(
+            response,
+            `Failed to load customer locations (${response.status})`,
+          ),
         )
       }
 
@@ -141,7 +299,10 @@ export async function getCustomerLocation(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load customer location (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load customer location (${response.status})`,
+      ),
     )
   }
 
@@ -157,7 +318,10 @@ export async function listCollectionStatuses(): Promise<
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load collection statuses (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load collection statuses (${response.status})`,
+      ),
     )
   }
 
@@ -177,7 +341,10 @@ export async function listCollectionItems(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load collection items (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load collection items (${response.status})`,
+      ),
     )
   }
 
@@ -197,7 +364,10 @@ export async function listCollectionAssets(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to load collection assets (${response.status})`,
+      await getErrorMessage(
+        response,
+        `Failed to load collection assets (${response.status})`,
+      ),
     )
   }
 
