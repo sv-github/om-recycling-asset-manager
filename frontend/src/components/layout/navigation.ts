@@ -13,6 +13,10 @@ export const navigationItems: NavigationItem[] = [
     path: '/collections',
   },
   {
+    label: 'Receiving',
+    path: '/receiving',
+  },
+  {
     label: 'Assets',
     path: '/assets',
   },

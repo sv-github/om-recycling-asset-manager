@@ -15,6 +15,7 @@ import CollectionsPage from './pages/CollectionsPage'
 import DashboardPage from './pages/DashboardPage'
 import DispositionPage from './pages/DispositionPage'
 import ProcessingPage from './pages/ProcessingPage'
+import ReceivingPage from './pages/ReceivingPage'
 import ReportsPage from './pages/ReportsPage'
 import SanitizationPage from './pages/SanitizationPage'
 
@@ -46,6 +47,11 @@ function App() {
           <Route
             path="/collections/:collectionId"
             element={<CollectionDetailPage />}
+          />
+
+          <Route
+            path="/receiving"
+            element={<ReceivingPage />}
           />
 
           <Route
