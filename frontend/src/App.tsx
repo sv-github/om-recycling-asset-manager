@@ -10,6 +10,7 @@ import './components/ui/ui.css'
 import AppShell from './components/layout/AppShell'
 import AssetDetailPage from './pages/AssetDetailPage'
 import AssetsPage from './pages/AssetsPage'
+import CollectionDetailPage from './pages/CollectionDetailPage'
 import CollectionsPage from './pages/CollectionsPage'
 import DashboardPage from './pages/DashboardPage'
 import DispositionPage from './pages/DispositionPage'
@@ -40,6 +41,11 @@ function App() {
           <Route
             path="/collections"
             element={<CollectionsPage />}
+          />
+
+          <Route
+            path="/collections/:collectionId"
+            element={<CollectionDetailPage />}
           />
 
           <Route

@@ -3,6 +3,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
@@ -62,14 +63,20 @@ function formatCollectionDate(
 }
 
 function CollectionsPage() {
+  const navigate = useNavigate()
+
   const [collections, setCollections] = useState<
     Collection[]
   >([])
 
-  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customers, setCustomers] = useState<
+    Customer[]
+  >([])
+
   const [locations, setLocations] = useState<
     CustomerLocation[]
   >([])
+
   const [statuses, setStatuses] = useState<
     CollectionStatus[]
   >([])
@@ -83,8 +90,10 @@ function CollectionsPage() {
     useState('')
 
   const [loading, setLoading] = useState(true)
+
   const [filterDataLoading, setFilterDataLoading] =
     useState(true)
+
   const [error, setError] = useState<string | null>(
     null,
   )
@@ -98,9 +107,11 @@ function CollectionsPage() {
         customerId: customerFilter
           ? Number(customerFilter)
           : undefined,
+
         locationId: locationFilter
           ? Number(locationFilter)
           : undefined,
+
         status: statusFilter || undefined,
       })
 
@@ -119,6 +130,7 @@ function CollectionsPage() {
   useEffect(() => {
     async function loadFilterData() {
       setFilterDataLoading(true)
+      setError(null)
 
       try {
         const [
@@ -131,7 +143,9 @@ function CollectionsPage() {
 
         const locationData =
           await listCustomerLocations(
-            customerData.map((customer) => customer.id),
+            customerData.map(
+              (customer) => customer.id,
+            ),
           )
 
         setCustomers(customerData)
@@ -187,22 +201,27 @@ function CollectionsPage() {
 
     return locations.filter(
       (location) =>
-        location.customer_id === Number(customerFilter),
+        location.customer_id ===
+        Number(customerFilter),
     )
   }, [locations, customerFilter])
 
   const filteredCollections = useMemo(() => {
-    const searchTerm = search.trim().toLowerCase()
+    const searchTerm =
+      search.trim().toLowerCase()
 
     if (!searchTerm) {
       return collections
     }
 
     return collections.filter((collection) => {
-      const customer =
-        customerMap.get(collection.customer_id)
-      const location =
-        locationMap.get(collection.location_id)
+      const customer = customerMap.get(
+        collection.customer_id,
+      )
+
+      const location = locationMap.get(
+        collection.location_id,
+      )
 
       return [
         collection.collection_code,
@@ -215,7 +234,10 @@ function CollectionsPage() {
         location?.location_code,
         collection.status,
       ].some((value) =>
-        value?.toLowerCase().includes(searchTerm),
+        value
+          ?.toString()
+          .toLowerCase()
+          .includes(searchTerm),
       )
     })
   }, [
@@ -259,15 +281,22 @@ function CollectionsPage() {
               id="collection-customer"
               value={customerFilter}
               onChange={(event) => {
-                setCustomerFilter(event.target.value)
+                setCustomerFilter(
+                  event.target.value,
+                )
                 setLocationFilter('')
               }}
               disabled={filterDataLoading}
             >
-              <option value="">All customers</option>
+              <option value="">
+                All customers
+              </option>
 
               {customers
-                .filter((customer) => customer.is_active)
+                .filter(
+                  (customer) =>
+                    customer.is_active,
+                )
                 .map((customer) => (
                   <option
                     key={customer.id}
@@ -288,15 +317,20 @@ function CollectionsPage() {
               id="collection-location"
               value={locationFilter}
               onChange={(event) =>
-                setLocationFilter(event.target.value)
+                setLocationFilter(
+                  event.target.value,
+                )
               }
               disabled={filterDataLoading}
             >
-              <option value="">All locations</option>
+              <option value="">
+                All locations
+              </option>
 
               {filteredLocations
                 .filter(
-                  (location) => location.is_active,
+                  (location) =>
+                    location.is_active,
                 )
                 .map((location) => (
                   <option
@@ -318,11 +352,15 @@ function CollectionsPage() {
               id="collection-status"
               value={statusFilter}
               onChange={(event) =>
-                setStatusFilter(event.target.value)
+                setStatusFilter(
+                  event.target.value,
+                )
               }
               disabled={filterDataLoading}
             >
-              <option value="">All statuses</option>
+              <option value="">
+                All statuses
+              </option>
 
               {statuses.map((status) => (
                 <option
@@ -381,7 +419,9 @@ function CollectionsPage() {
 
             <Button
               variant="secondary"
-              onClick={() => void loadCollections()}
+              onClick={() =>
+                void loadCollections()
+              }
             >
               Retry
             </Button>
@@ -426,13 +466,23 @@ function CollectionsPage() {
                         )
 
                       return (
-                        <tr key={collection.id}>
+                        <tr
+                          key={collection.id}
+                        >
                           <td>
-                            <span className="collection-code">
+                            <button
+                              type="button"
+                              className="collection-code-button"
+                              onClick={() =>
+                                navigate(
+                                  `/collections/${collection.id}`,
+                                )
+                              }
+                            >
                               {
                                 collection.collection_code
                               }
-                            </span>
+                            </button>
                           </td>
 
                           <td>

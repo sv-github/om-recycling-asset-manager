@@ -139,6 +139,27 @@
   font-weight: 650;
 }
 
+.collection-code-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1d4ed8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.collection-code-button:hover {
+  text-decoration: underline;
+}
+
+.collection-code-button:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid #9ca3af;
+  outline-offset: 2px;
+}
+
 .collections-state {
   min-height: 180px;
   display: flex;

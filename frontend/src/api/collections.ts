@@ -1,5 +1,7 @@
 import type {
   Collection,
+  CollectionAsset,
+  CollectionItem,
   CollectionStatus,
   Customer,
   CustomerLocation,
@@ -19,15 +21,24 @@ export async function listCollections(
   const params = new URLSearchParams()
 
   if (filters.customerId !== undefined) {
-    params.set('customer_id', String(filters.customerId))
+    params.set(
+      'customer_id',
+      String(filters.customerId),
+    )
   }
 
   if (filters.locationId !== undefined) {
-    params.set('location_id', String(filters.locationId))
+    params.set(
+      'location_id',
+      String(filters.locationId),
+    )
   }
 
   if (filters.status !== undefined) {
-    params.set('status_filter', filters.status)
+    params.set(
+      'status_filter',
+      filters.status,
+    )
   }
 
   const queryString = params.toString()
@@ -47,8 +58,26 @@ export async function listCollections(
   return response.json() as Promise<Collection[]>
 }
 
+export async function getCollection(
+  collectionId: number,
+): Promise<Collection> {
+  const response = await fetch(
+    `${API_BASE}/collections/${collectionId}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load collection (${response.status})`,
+    )
+  }
+
+  return response.json() as Promise<Collection>
+}
+
 export async function listCustomers(): Promise<Customer[]> {
-  const response = await fetch(`${API_BASE}/customers`)
+  const response = await fetch(
+    `${API_BASE}/customers`,
+  )
 
   if (!response.ok) {
     throw new Error(
@@ -57,6 +86,22 @@ export async function listCustomers(): Promise<Customer[]> {
   }
 
   return response.json() as Promise<Customer[]>
+}
+
+export async function getCustomer(
+  customerId: number,
+): Promise<Customer> {
+  const response = await fetch(
+    `${API_BASE}/customers/${customerId}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load customer (${response.status})`,
+    )
+  }
+
+  return response.json() as Promise<Customer>
 }
 
 export async function listCustomerLocations(
@@ -78,11 +123,29 @@ export async function listCustomerLocations(
         )
       }
 
-      return response.json() as Promise<CustomerLocation[]>
+      return response.json() as Promise<
+        CustomerLocation[]
+      >
     }),
   )
 
   return responses.flat()
+}
+
+export async function getCustomerLocation(
+  locationId: number,
+): Promise<CustomerLocation> {
+  const response = await fetch(
+    `${API_BASE}/customer-locations/${locationId}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load customer location (${response.status})`,
+    )
+  }
+
+  return response.json() as Promise<CustomerLocation>
 }
 
 export async function listCollectionStatuses(): Promise<
@@ -99,4 +162,44 @@ export async function listCollectionStatuses(): Promise<
   }
 
   return response.json() as Promise<CollectionStatus[]>
+}
+
+export async function listCollectionItems(
+  collectionId: number,
+): Promise<CollectionItem[]> {
+  const params = new URLSearchParams({
+    collection_id: String(collectionId),
+  })
+
+  const response = await fetch(
+    `${API_BASE}/collection-items?${params.toString()}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load collection items (${response.status})`,
+    )
+  }
+
+  return response.json() as Promise<CollectionItem[]>
+}
+
+export async function listCollectionAssets(
+  collectionId: number,
+): Promise<CollectionAsset[]> {
+  const params = new URLSearchParams({
+    collection_id: String(collectionId),
+  })
+
+  const response = await fetch(
+    `${API_BASE}/assets?${params.toString()}`,
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load collection assets (${response.status})`,
+    )
+  }
+
+  return response.json() as Promise<CollectionAsset[]>
 }
