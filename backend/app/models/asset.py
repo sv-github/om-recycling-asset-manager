@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -23,6 +24,18 @@ class Asset(Base):
             func.lower(text("serial_number")),
             unique=True,
             postgresql_where=text("serial_number IS NOT NULL"),
+        ),
+        CheckConstraint(
+            "status IN ('received', 'in_process', 'ready', 'disposed', 'on_hold', 'closed')",
+            name="ck_assets_status_valid",
+        ),
+        CheckConstraint(
+            "(status = 'on_hold' AND lifecycle_previous_status IN "
+            "('received', 'in_process', 'ready') "
+            "AND lifecycle_hold_reason IS NOT NULL) "
+            "OR (status <> 'on_hold' AND lifecycle_previous_status IS NULL "
+            "AND lifecycle_hold_reason IS NULL)",
+            name="ck_assets_hold_state_consistent",
         ),
     )
 
