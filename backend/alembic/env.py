@@ -17,6 +17,9 @@ from app.models.asset_processing import AssetProcessing
 from app.models.asset_disposition import AssetDisposition
 from app.models.collection_status import CollectionStatus
 from app.models.asset_sanitization import AssetSanitization
+from app.models.asset_category import AssetCategory
+from app.models.qc_template import QCTemplate
+from app.models.qc_template_item import QCTemplateItem
 
 config = context.config
 

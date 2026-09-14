@@ -15,6 +15,8 @@ from app.api.asset_processing import router as asset_processing_router
 from app.api.asset_dispositions import router as asset_dispositions_router
 from app.api.asset_returns import router as asset_returns_router
 from app.api.asset_history import router as asset_history_router
+from app.api.asset_categories import router as asset_categories_router
+from app.api.qc_templates import router as qc_templates_router
 
 
 app = FastAPI(
@@ -35,6 +37,8 @@ app.include_router(asset_processing_router)
 app.include_router(asset_dispositions_router)
 app.include_router(asset_returns_router)
 app.include_router(asset_history_router)
+app.include_router(asset_categories_router)
+app.include_router(qc_templates_router)
 
 
 @app.get("/health")
