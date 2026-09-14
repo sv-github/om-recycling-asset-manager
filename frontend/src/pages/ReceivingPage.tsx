@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import type { FormEvent } from 'react'
@@ -111,6 +112,7 @@ function DetailField({
 
 function ReceivingPage() {
   const navigate = useNavigate()
+  const serialInputRef = useRef<HTMLInputElement>(null)
 
   const [collections, setCollections] = useState<
     Collection[]
@@ -422,14 +424,15 @@ function ReceivingPage() {
         `${createdAsset.asset_code} registered successfully.`,
       )
 
-      setSelectedCollectionItemId('')
+      // Keep the receiving context and reusable asset details
+      // for high-volume entry. Only clear per-asset fields.
       setSerialNumber('')
-      setAssetCategory('')
-      setManufacturer('')
-      setModel('')
-      setDescription('')
-      setReceivedBy('')
       setReceivingNotes('')
+
+      // Return directly to the serial-number field for the next asset.
+      window.requestAnimationFrame(() => {
+        serialInputRef.current?.focus()
+      })
     } catch (err) {
       setSubmitError(
         err instanceof Error
@@ -806,6 +809,7 @@ function ReceivingPage() {
                     </label>
 
                     <input
+                      ref={serialInputRef}
                       id="receiving-serial"
                       type="text"
                       value={serialNumber}
@@ -814,7 +818,28 @@ function ReceivingPage() {
                           event.target.value,
                         )
                       }
-                      placeholder="Optional"
+                      placeholder="Scan or enter serial number"
+                      autoComplete="off"
+                      disabled={submitting}
+                    />
+                  </div>
+
+                  <div className="receiving-form-field receiving-form-field-received-by">
+                    <label htmlFor="receiving-by">
+                      Received By
+                    </label>
+
+                    <input
+                      id="receiving-by"
+                      type="text"
+                      value={receivedBy}
+                      onChange={(event) =>
+                        setReceivedBy(
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Name of receiving staff"
+                      autoComplete="name"
                       disabled={submitting}
                     />
                   </div>
@@ -892,25 +917,6 @@ function ReceivingPage() {
                       }
                       placeholder="Optional equipment description"
                       rows={3}
-                      disabled={submitting}
-                    />
-                  </div>
-
-                  <div className="receiving-form-field">
-                    <label htmlFor="receiving-by">
-                      Received By
-                    </label>
-
-                    <input
-                      id="receiving-by"
-                      type="text"
-                      value={receivedBy}
-                      onChange={(event) =>
-                        setReceivedBy(
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Name of receiving staff"
                       disabled={submitting}
                     />
                   </div>

@@ -156,7 +156,7 @@
 
 .receiving-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px 20px;
 }
 
@@ -166,6 +166,14 @@
 
 .receiving-form-field-full {
   grid-column: 1 / -1;
+}
+
+.receiving-form-field-serial {
+  grid-column: span 2;
+}
+
+.receiving-form-field-received-by {
+  grid-column: span 1;
 }
 
 .receiving-form-actions {
@@ -308,6 +316,15 @@
   .receiving-grid {
     grid-template-columns: 1fr;
   }
+
+  .receiving-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receiving-form-field-serial,
+  .receiving-form-field-received-by {
+    grid-column: span 1;
+  }
 }
 
 @media (max-width: 700px) {
@@ -316,7 +333,9 @@
     grid-template-columns: 1fr;
   }
 
-  .receiving-form-field-full {
+  .receiving-form-field-full,
+  .receiving-form-field-serial,
+  .receiving-form-field-received-by {
     grid-column: auto;
   }
 

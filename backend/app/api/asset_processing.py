@@ -254,7 +254,10 @@ def get_asset_processing_history(
     processing_records = db.scalars(
         select(AssetProcessing)
         .where(AssetProcessing.asset_id == asset_id)
-        .order_by(AssetProcessing.processing_date.desc())
+        .order_by(
+            AssetProcessing.created_at.desc(),
+            AssetProcessing.id.desc(),
+        )
     ).all()
 
     return processing_records
