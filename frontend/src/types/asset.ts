@@ -12,6 +12,8 @@ export type Asset = {
   description: string | null
 
   status: string
+  lifecycle_previous_status: string | null
+  lifecycle_hold_reason: string | null
 
   received_at: string
   received_by: string | null

@@ -8,6 +8,10 @@ from app.database import get_db
 from app.models.asset import Asset
 from app.models.asset_disposition import AssetDisposition
 from app.models.asset_sanitization import AssetSanitization
+from app.services.asset_lifecycle import (
+    AssetLifecycleStatus,
+    transition_asset,
+)
 from app.schemas.asset_disposition import AssetDispositionResponse
 from app.schemas.asset_return import AssetReturnCreate
 
@@ -182,7 +186,7 @@ def return_asset(
     # disposition history remain unchanged.
     # ---------------------------------------------------------
 
-    asset.status = "received"
+    transition_asset(asset, AssetLifecycleStatus.RECEIVED)
     asset.final_disposition = None
 
     # ---------------------------------------------------------

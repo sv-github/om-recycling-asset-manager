@@ -5,6 +5,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.asset_processing import AssetProcessing
+from app.services.asset_lifecycle import (
+    AssetLifecycleStatus,
+    ensure_active_asset,
+    transition_asset,
+)
 from app.schemas.asset_processing import (
     AssetProcessingCreate,
     AssetProcessingResponse,
@@ -86,14 +91,7 @@ def create_asset_processing(
             detail="Asset not found.",
         )
 
-    if asset.status in {"closed", "disposed"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Cannot create processing records for an asset "
-                f"with status '{asset.status}'."
-            ),
-        )
+    ensure_active_asset(asset)
 
     # ---------------------------------------------------------
     # Validate processing type
@@ -221,6 +219,12 @@ def create_asset_processing(
 
     db.add(processing)
 
+    if asset.status in {
+        AssetLifecycleStatus.RECEIVED.value,
+        AssetLifecycleStatus.READY.value,
+    }:
+        transition_asset(asset, AssetLifecycleStatus.IN_PROCESS)
+
     try:
         db.commit()
         db.refresh(processing)
@@ -321,14 +325,7 @@ def update_asset_processing(
             detail="Asset not found.",
         )
 
-    if asset.status in {"closed", "disposed"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Cannot modify processing records for an asset "
-                f"with status '{asset.status}'."
-            ),
-        )
+    ensure_active_asset(asset)
 
     # ---------------------------------------------------------
     # Build the complete resulting state first.

@@ -5,6 +5,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.asset_disposition import AssetDisposition
+from app.services.asset_lifecycle import (
+    AssetLifecycleStatus,
+    ensure_active_asset,
+    transition_asset,
+)
 from app.schemas.asset_disposition import (
     AssetDispositionCreate,
     AssetDispositionResponse,
@@ -165,12 +170,13 @@ def create_asset_disposition(
     # A disposed or closed asset cannot receive a new disposition.
     # A returned asset is reactivated to "received", so it can
     # legitimately enter a new disposition lifecycle.
-    if asset.status in {"closed", "disposed"}:
+    if asset.status != AssetLifecycleStatus.READY.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Asset {payload.asset_id} is already disposed "
-                "and cannot receive a new disposition"
+                f"Asset {payload.asset_id} cannot receive a disposition "
+                f"while its lifecycle status is '{asset.status}'. "
+                "The asset must be ready for disposition."
             ),
         )
 
@@ -412,12 +418,13 @@ def update_asset_disposition_status(
                 ),
             )
 
-        if asset.status in {"closed", "disposed"}:
+        if asset.status != AssetLifecycleStatus.READY.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    f"Asset {disposition.asset_id} is already disposed "
-                    "and cannot be completed again"
+                    f"Asset {disposition.asset_id} cannot complete disposition "
+                    f"while its lifecycle status is '{asset.status}'. "
+                    "The asset must be ready for disposition."
                 ),
             )
 
@@ -440,7 +447,7 @@ def update_asset_disposition_status(
 
     # Completing the disposition permanently closes the asset.
     if requested_status == DispositionStatus.completed:
-        asset.status = "disposed"
+        transition_asset(asset, AssetLifecycleStatus.DISPOSED)
 
         # Store the completed disposition type as the asset's
         # lifecycle summary field.

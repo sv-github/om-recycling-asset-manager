@@ -94,6 +94,18 @@ class Asset(Base):
         index=True,
     )
 
+    # When an asset is placed on hold, retain the operational status
+    # that was paused so the hold can be released safely.
+    lifecycle_previous_status: Mapped[str | None] = mapped_column(
+        String(40),
+        nullable=True,
+    )
+
+    lifecycle_hold_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     # Receiving information
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

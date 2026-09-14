@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -50,6 +51,8 @@ class AssetResponse(BaseModel):
     description: str | None
 
     status: str
+    lifecycle_previous_status: str | None
+    lifecycle_hold_reason: str | None
 
     received_at: datetime
     received_by: str | None
@@ -65,3 +68,8 @@ class AssetResponse(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+
+class AssetLifecycleAction(BaseModel):
+    action: Literal["hold", "release_hold"]
+    reason: str | None = Field(default=None, max_length=1000)

@@ -5,6 +5,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.asset_inspection import AssetInspection
+from app.services.asset_lifecycle import (
+    AssetLifecycleStatus,
+    ensure_active_asset,
+    transition_asset,
+)
 from app.schemas.asset_inspection import (
     AssetInspectionCreate,
     AssetInspectionResponse,
@@ -35,14 +40,7 @@ def create_asset_inspection(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Asset not found.",
         )
-    if asset.status in {"closed", "disposed"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Cannot create inspections for an asset "
-                f"with status '{asset.status}'."
-            ),
-        )
+    ensure_active_asset(asset)
 
     data = inspection_data.model_dump()
 
@@ -53,6 +51,13 @@ def create_asset_inspection(
     inspection = AssetInspection(**data)
 
     db.add(inspection)
+
+    if asset.status in {
+        AssetLifecycleStatus.RECEIVED.value,
+        AssetLifecycleStatus.READY.value,
+    }:
+        transition_asset(asset, AssetLifecycleStatus.IN_PROCESS)
+
     db.commit()
     db.refresh(inspection)
 
@@ -144,14 +149,7 @@ def update_asset_inspection(
             detail="Asset not found.",
         )
 
-    if asset.status in {"closed", "disposed"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Cannot modify inspections for an asset "
-                f"with status '{asset.status}'."
-            ),
-        )
+    ensure_active_asset(asset)
 
     update_data = inspection_data.model_dump(
         exclude_unset=True,

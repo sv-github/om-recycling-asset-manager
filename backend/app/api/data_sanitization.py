@@ -7,6 +7,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.asset import Asset
 from app.models.asset_sanitization import AssetSanitization
+from app.services.asset_lifecycle import (
+    AssetLifecycleStatus,
+    ensure_active_asset,
+    transition_asset,
+)
 from app.schemas.data_sanitization import (
     DataSanitizationHistoryResponse,
     DataSanitizationResponse,
@@ -58,14 +63,7 @@ def update_data_sanitization(
             detail="Asset not found.",
         )
 
-    if asset.status in {"closed", "disposed"}:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Cannot modify data sanitization for an asset "
-                f"with status '{asset.status}'."
-            ),
-        )
+    ensure_active_asset(asset)
 
     new_status = data.data_wipe_status.strip().lower()
 
@@ -178,6 +176,15 @@ def update_data_sanitization(
     # ---------------------------------------------------------
 
     asset.data_wipe_status = new_status
+
+    if (
+        new_status == "in_progress"
+        and asset.status in {
+            AssetLifecycleStatus.RECEIVED.value,
+            AssetLifecycleStatus.READY.value,
+        }
+    ):
+        transition_asset(asset, AssetLifecycleStatus.IN_PROCESS)
 
     if data.data_wipe_method is not None:
         asset.data_wipe_method = data.data_wipe_method

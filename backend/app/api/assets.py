@@ -11,6 +11,7 @@ from app.schemas.asset import (
     AssetCreate,
     AssetResponse,
     AssetUpdate,
+    AssetLifecycleAction,
 )
 
 
@@ -223,4 +224,62 @@ def update_asset(
 
     db.refresh(asset)
 
+    return asset
+
+
+@router.patch(
+    "/{asset_id}/lifecycle",
+    response_model=AssetResponse,
+)
+def update_asset_lifecycle(
+    asset_id: int,
+    action: AssetLifecycleAction,
+    db: Session = Depends(get_db),
+):
+    """Pause or resume an asset lifecycle without exposing arbitrary status writes."""
+
+    asset = db.scalar(
+        select(Asset)
+        .where(Asset.id == asset_id)
+        .with_for_update()
+    )
+
+    if asset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Asset not found.",
+        )
+
+    requested_action = action.action.strip().lower()
+
+    if requested_action == "hold":
+        ensure_active_asset(asset)
+        transition_asset(
+            asset,
+            AssetLifecycleStatus.ON_HOLD,
+            reason=action.reason,
+        )
+    elif requested_action == "release_hold":
+        if asset.status != AssetLifecycleStatus.ON_HOLD.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Asset is not on hold.",
+            )
+        if asset.lifecycle_previous_status is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Asset is on hold but has no previous lifecycle status.",
+            )
+        transition_asset(
+            asset,
+            asset.lifecycle_previous_status,
+        )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid lifecycle action. Allowed values: hold, release_hold.",
+        )
+
+    db.commit()
+    db.refresh(asset)
     return asset
